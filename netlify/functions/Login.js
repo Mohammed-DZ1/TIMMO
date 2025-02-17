@@ -8,12 +8,12 @@ exports.handler = async (event) => {
 
     const { email, password } = JSON.parse(event.body);
 
-    // Environment variables for super admin credentials
-    const superAdminEmail = process.env.SUPER_ADMIN_EMAIL;
-    const superAdminPassword = process.env.SUPER_ADMIN_PASSWORD;
+    // Read credentials from Netlify environment variables
+    const adminEmail = process.env.REACT_APP_AUTH_EMAIL;
+    const adminPassword = process.env.REACT_APP_AUTH_PASSWORD;
 
     // Check if the credentials are correct
-    if (email === superAdminEmail && password === superAdminPassword) {
+    if (email === adminEmail && password === adminPassword) {
         return {
             statusCode: 200,
             body: JSON.stringify({
