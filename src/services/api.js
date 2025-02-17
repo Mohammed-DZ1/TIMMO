@@ -1,11 +1,12 @@
 import axios from 'axios';
 
+// Configure API base URL
 const api = axios.create({
     baseURL: '/.netlify/functions/'
 });
 
-// Login User
-export const loginUser = async (email, password) => {
+// Login User (Uses Environment Variables if No Credentials Provided)
+export const loginUser = async (email = process.env.AUTH_EMAIL, password = process.env.AUTH_PASSWORD) => {
     try {
         const response = await api.post('auth', { email, password });
         return response.data;
