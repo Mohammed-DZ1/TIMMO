@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next'; // Import translation hook
 import { v4 as uuidv4 } from 'uuid';  // For generating unique IDs
 
 const RoleManagementForm = ({ currentUserRole }) => {
+    const { t } = useTranslation(); // Hook for translations
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -47,7 +49,7 @@ const RoleManagementForm = ({ currentUserRole }) => {
                 const response = await fetch('https://timmodashboard.netlify.app/.netlify/functions/getSidebarLinks');
                 const data = await response.json();
                 const sidebarPermissions = data.links.reduce((acc, link) => {
-                    acc[link.path] = false;  // Default to false
+                    acc[link.path] = false;  
                     return acc;
                 }, {});
                 setSidebarLinks(data.links);
@@ -70,17 +72,17 @@ const RoleManagementForm = ({ currentUserRole }) => {
         e.preventDefault();
 
         if (!name || !email || !password) {
-            setError('All fields are required.');
+            setError(t('errorAllFieldsRequired'));
             return;
         }
 
         if (!validateEmail(email)) {
-            setError('Please enter a valid email.');
+            setError(t('errorInvalidEmail'));
             return;
         }
 
         if (role === 'Super Admin' && currentUserRole !== 'Super Admin') {
-            setError('Only Super Admins can add other Super Admins.');
+            setError(t('errorSuperAdminOnly'));
             return;
         }
 
@@ -102,11 +104,11 @@ const RoleManagementForm = ({ currentUserRole }) => {
 
             if (response.ok) {
                 const updatedUsers = await response.json();
-                setUsers(updatedUsers);  // Update the list after successful addition
-                setError('');  // Clear errors
-                resetForm();  // Reset the form
+                setUsers(updatedUsers);
+                setError('');
+                resetForm();
             } else {
-                setError('Failed to add user. Please try again.');
+                setError(t('errorAddUserFailed'));
             }
         } catch (error) {
             console.error('Error adding user:', error);
@@ -120,7 +122,7 @@ const RoleManagementForm = ({ currentUserRole }) => {
         setRole('Agent');
         setPermissions({
             sidebarLinks: sidebarLinks.reduce((acc, link) => {
-                acc[link.path] = false;  // Reset all sidebar permissions
+                acc[link.path] = false; 
                 return acc;
             }, {}),
             buttons: {
@@ -154,13 +156,13 @@ const RoleManagementForm = ({ currentUserRole }) => {
 
     return (
         <div className="bg-white p-6 rounded shadow-md w-full max-w-lg">
-            <h2 className="text-2xl font-bold mb-4">Add or Manage Users</h2>
+            <h2 className="text-2xl font-bold mb-4">{t('addOrManageUsers')}</h2>
 
             {error && <p className="text-red-500 mb-4">{error}</p>}
 
             <form onSubmit={handleSubmit}>
                 <div className="mb-4">
-                    <label className="block text-gray-700">Name</label>
+                    <label className="block text-gray-700">{t('name')}</label>
                     <input
                         type="text"
                         value={name}
@@ -171,7 +173,7 @@ const RoleManagementForm = ({ currentUserRole }) => {
                 </div>
 
                 <div className="mb-4">
-                    <label className="block text-gray-700">Email</label>
+                    <label className="block text-gray-700">{t('email')}</label>
                     <input
                         type="email"
                         value={email}
@@ -182,7 +184,7 @@ const RoleManagementForm = ({ currentUserRole }) => {
                 </div>
 
                 <div className="mb-4">
-                    <label className="block text-gray-700">Password</label>
+                    <label className="block text-gray-700">{t('password')}</label>
                     <input
                         type="password"
                         value={password}
@@ -193,21 +195,21 @@ const RoleManagementForm = ({ currentUserRole }) => {
                 </div>
 
                 <div className="mb-4">
-                    <label className="block text-gray-700">Role</label>
+                    <label className="block text-gray-700">{t('role')}</label>
                     <select
                         value={role}
                         onChange={(e) => setRole(e.target.value)}
                         className="w-full p-2 border rounded"
                     >
-                        <option value="Super Admin">Super Admin</option>
-                        <option value="Admin">Admin</option>
-                        <option value="Agent">Agent</option>
+                        <option value="Super Admin">{t('superAdmin')}</option>
+                        <option value="Admin">{t('admin')}</option>
+                        <option value="Agent">{t('agent')}</option>
                     </select>
                 </div>
 
                 {/* Sidebar Links Permissions */}
                 <div className="mb-4">
-                    <h3 className="font-semibold">Sidebar Links</h3>
+                    <h3 className="font-semibold">{t('sidebarLinks')}</h3>
                     {sidebarLinks.map((link) => (
                         <div key={link.path} className="flex items-center mb-2">
                             <input
@@ -217,14 +219,14 @@ const RoleManagementForm = ({ currentUserRole }) => {
                                 id={`sidebar-${link.path}`}
                             />
                             <label htmlFor={`sidebar-${link.path}`} className="ml-2 capitalize">
-                                {link.label}
+                                {t(link.label)}
                             </label>
                         </div>
                     ))}
                 </div>
 
                 <button type="submit" className="bg-blue-500 text-white p-2 rounded">
-                    Add User
+                    {t('addUser')}
                 </button>
             </form>
         </div>
