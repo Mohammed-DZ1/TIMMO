@@ -1,6 +1,6 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
-import { decode as jwtDecode } from 'jwt-decode'; // Updated import statement
+import { decode as jwtDecode } from 'jwt-decode';
 
 const isTokenExpired = () => {
     const token = localStorage.getItem('authToken');
