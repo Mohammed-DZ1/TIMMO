@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next'; // Import translation hook
+import { useTranslation } from 'react-i18next';
 import KpiCard from '../components/KpiCard';
 import { FiHome, FiUsers, FiTrendingUp } from 'react-icons/fi';
-import LineChart from '../components/LineChart'; // Importing the Line Chart Component
-import PieChart from '../components/PieChart';  // Importing the Pie Chart Component
+import LineChart from '../components/LineChart';
+import PieChart from '../components/PieChart';
 
 const Dashboard = () => {
-    const { t } = useTranslation(); // Hook for translations
+    const { t } = useTranslation();
     const [dashboardData, setDashboardData] = useState({
         activeProperties: 0,
         totalAgents: 0,
