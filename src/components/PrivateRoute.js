@@ -1,6 +1,18 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
-import { isTokenExpired } from '../utils/tokenUtils';
+import { decode as jwtDecode } from 'jwt-decode'; // Updated import statement
+
+const isTokenExpired = () => {
+    const token = localStorage.getItem('authToken');
+    if (!token) return true;
+
+    try {
+        const decodedToken = jwtDecode(token);
+        return decodedToken.exp * 1000 < Date.now(); // Check if the token is expired
+    } catch (error) {
+        return true; // If decoding fails, consider token expired
+    }
+};
 
 const PrivateRoute = ({ children }) => {
     const token = localStorage.getItem('authToken');
