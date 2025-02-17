@@ -25,6 +25,9 @@ const resources = {
       "english": "English",
       "french": "French",
       "arabic": "Arabic",
+      "logout": "Logout",
+      "logoutMessage": "You have successfully logged out.",
+      "noLinks": "No links available"
     }
   },
   fr: {
@@ -50,6 +53,9 @@ const resources = {
       "english": "Anglais",
       "french": "Français",
       "arabic": "Arabe",
+      "logout": "Déconnexion",
+      "logoutMessage": "Vous vous êtes déconnecté avec succès.",
+      "noLinks": "Aucun lien disponible"
     }
   },
   ar: {
@@ -75,6 +81,9 @@ const resources = {
       "english": "الإنجليزية",
       "french": "الفرنسية",
       "arabic": "العربية",
+      "logout": "تسجيل الخروج",
+      "logoutMessage": "لقد قمت بتسجيل الخروج بنجاح.",
+      "noLinks": "لا توجد روابط متاحة"
     }
   }
 };
