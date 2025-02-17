@@ -1,4 +1,4 @@
-import jwtDecode from 'jwt-decode';
+import { decode as jwtDecode } from 'jwt-decode'; // Updated import statement
 
 export const isTokenExpired = () => {
     const token = localStorage.getItem('authToken');
@@ -10,6 +10,6 @@ export const isTokenExpired = () => {
         return decoded.exp < currentTime;
     } catch (error) {
         console.error('Invalid token:', error);
-        return true;
+        return true; // If decoding fails, consider the token expired
     }
 };
