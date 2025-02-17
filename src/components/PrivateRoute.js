@@ -4,11 +4,10 @@ import { isTokenExpired } from '../utils/tokenUtils';
 
 const PrivateRoute = ({ children }) => {
     const token = localStorage.getItem('authToken');
-    const role = localStorage.getItem('userRole');
 
     if (!token || isTokenExpired()) {
         alert('Session expired. Please log in again.');
-        localStorage.clear();  // Clear any stored session
+        localStorage.clear(); // Clear session storage
         return <Navigate to="/login" />;
     }
 
