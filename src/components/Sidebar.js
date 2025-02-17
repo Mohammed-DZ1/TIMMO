@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { FaSignOutAlt } from 'react-icons/fa';
+import { useTranslation } from 'react-i18next';  // Import translation hook
 import Logo from '../images/logo1.png';  // Adjust path if needed
 import * as icons from 'react-icons/fa';  // Dynamically load icons
 
 const Sidebar = ({ userRole }) => {
+    const { t } = useTranslation(); // Hook for translations
     const [isHovered, setIsHovered] = useState(false);
     const [links, setLinks] = useState([]);  // Initialize with an empty array
     const navigate = useNavigate();
@@ -21,7 +23,6 @@ const Sidebar = ({ userRole }) => {
                 });
                 const data = await response.json();
                 
-                // Safely handle the response and prevent undefined errors
                 if (data && data.links) {
                     setLinks(data.links);
                 } else {
@@ -39,7 +40,7 @@ const Sidebar = ({ userRole }) => {
 
     const handleLogout = () => {
         localStorage.clear();  // Clear session data if applicable
-        alert('You have successfully logged out.');
+        alert(t('logoutMessage')); // Use translation
         navigate('/login');  // Redirect to the login page
     };
 
@@ -60,7 +61,6 @@ const Sidebar = ({ userRole }) => {
             <ul className="space-y-6 w-full">
                 {links.length > 0 ? (
                     links.map((link) => {
-                        // Dynamically render icons
                         const IconComponent = icons[link.icon];
                         return (
                             <li key={link.path} className="w-full">
@@ -73,13 +73,13 @@ const Sidebar = ({ userRole }) => {
                                     }
                                 >
                                     <div className="ml-2">{IconComponent && <IconComponent size={25} />}</div>
-                                    {isHovered && <span className="text-sm font-medium">{link.label}</span>}
+                                    {isHovered && <span className="text-sm font-medium">{t(link.label)}</span>}
                                 </NavLink>
                             </li>
                         );
                     })
                 ) : (
-                    <li className="text-gray-300">No links available</li>
+                    <li className="text-gray-300">{t('noLinks')}</li>
                 )}
             </ul>
 
@@ -89,7 +89,7 @@ const Sidebar = ({ userRole }) => {
                 className="mb-6 flex items-center space-x-2 p-2 rounded-md transition-colors duration-300 text-gray-300 hover:text-white hover:bg-red-600 w-full"
             >
                 <FaSignOutAlt size={25} className="ml-2" />
-                {isHovered && <span className="text-sm font-medium">Logout</span>}
+                {isHovered && <span className="text-sm font-medium">{t('logout')}</span>}
             </button>
         </div>
     );
