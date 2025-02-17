@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
 import Properties from './pages/Properties';
@@ -8,10 +9,13 @@ import Agents from './pages/Agents';
 import Settings from './pages/Settings';
 import Login from './pages/Login';
 import PrivateRoute from './components/PrivateRoute';
+import LanguageSelector from './components/LanguageSelector'; // Import Language Selector
+import './i18n'; // Import i18n configuration
 
 function App() {
     const [agents, setAgents] = useState([]);  // Centralized agent state
     const [userRole, setUserRole] = useState(localStorage.getItem('userRole') || 'Guest');
+    const { t } = useTranslation();
 
     useEffect(() => {
         // Update userRole if it changes in localStorage
@@ -37,36 +41,39 @@ function App() {
 
     return (
         <Router>
-            <Routes>
-                {/* Public Route */}
-                <Route path="/login" element={<Login updateUserRole={updateUserRole} />} />
+            <div className="app-container">
+                <LanguageSelector /> {/* Language Selector at the top */}
+                <Routes>
+                    {/* Public Route */}
+                    <Route path="/login" element={<Login updateUserRole={updateUserRole} />} />
 
-                {/* Protected Routes */}
-                <Route
-                    path="/*"
-                    element={
-                        <PrivateRoute>
-                            <div className="flex h-screen">
-                                {/* Pass userRole to Sidebar */}
-                                <Sidebar userRole={userRole} />
-                                <div className="flex-1 p-8 md:p-6 bg-gray-100 overflow-auto">
-                                    <Routes>
-                                        <Route path="/" element={<Dashboard />} />
-                                        <Route path="/properties" element={<Properties />} />
-                                        <Route path="/clients" element={<Clients />} />
-                                        <Route
-                                            path="/agents"
-                                            element={<Agents agents={agents} addAgent={addAgent} />}
-                                        />
-                                        {/* Pass userRole to Settings */}
-                                        <Route path="/settings" element={<Settings userRole={userRole} />} />
-                                    </Routes>
+                    {/* Protected Routes */}
+                    <Route
+                        path="/*"
+                        element={
+                            <PrivateRoute>
+                                <div className="flex h-screen">
+                                    {/* Pass userRole to Sidebar */}
+                                    <Sidebar userRole={userRole} />
+                                    <div className="flex-1 p-8 md:p-6 bg-gray-100 overflow-auto">
+                                        <Routes>
+                                            <Route path="/" element={<Dashboard />} />
+                                            <Route path="/properties" element={<Properties />} />
+                                            <Route path="/clients" element={<Clients />} />
+                                            <Route
+                                                path="/agents"
+                                                element={<Agents agents={agents} addAgent={addAgent} />}
+                                            />
+                                            {/* Pass userRole to Settings */}
+                                            <Route path="/settings" element={<Settings userRole={userRole} />} />
+                                        </Routes>
+                                    </div>
                                 </div>
-                            </div>
-                        </PrivateRoute>
-                    }
-                />
-            </Routes>
+                            </PrivateRoute>
+                        }
+                    />
+                </Routes>
+            </div>
         </Router>
     );
 }
