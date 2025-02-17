@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next'; // Import translation hook
 import * as icons from 'react-icons/fa'; // Import all icons dynamically
 
 const SidebarLinkManagement = ({ userRole }) => {
+    const { t } = useTranslation(); // Hook for translations
     const [links, setLinks] = useState([]);
     const [newLink, setNewLink] = useState({ path: '', label: '', icon: 'FaHome' });
     const [availableIcons, setAvailableIcons] = useState([]);
@@ -39,13 +41,13 @@ const SidebarLinkManagement = ({ userRole }) => {
     // Add a new sidebar link
     const handleAddLink = async () => {
         if (!newLink.path || !newLink.label || !newLink.icon) {
-            alert('Please fill all fields before adding a new link.');
+            alert(t('errorFillAllFields')); // Use translation for error message
             return;
         }
 
         // Prevent duplicate paths
         if (links.some(link => link.path === newLink.path)) {
-            alert('This path already exists in the sidebar.');
+            alert(t('errorPathExists')); // Use translation for duplicate error
             return;
         }
 
@@ -84,7 +86,7 @@ const SidebarLinkManagement = ({ userRole }) => {
 
     return (
         <div className="p-6 bg-white rounded shadow-md">
-            <h3 className="text-2xl font-bold mb-4">Manage Sidebar Links for {userRole}</h3>
+            <h3 className="text-2xl font-bold mb-4">{t('manageSidebarLinks', { role: userRole })}</h3>
 
             {/* Current Links */}
             <ul className="mb-4">
@@ -94,13 +96,13 @@ const SidebarLinkManagement = ({ userRole }) => {
                         <li key={index} className="flex items-center justify-between p-2 border rounded mb-2">
                             <span className="flex items-center">
                                 <IconComponent className="mr-2" />
-                                {link.label} ({link.path})
+                                {t(link.label)} ({link.path})
                             </span>
                             <button
                                 onClick={() => handleRemoveLink(index)}
                                 className="bg-red-500 text-white px-3 py-1 rounded"
                             >
-                                Remove
+                                {t('remove')}
                             </button>
                         </li>
                     );
@@ -110,12 +112,12 @@ const SidebarLinkManagement = ({ userRole }) => {
             {/* Add New Link */}
             {(userRole === 'Super Admin' || userRole === 'Admin') && (
                 <div className="mt-4">
-                    <h4 className="text-lg font-semibold mb-2">Add New Link</h4>
+                    <h4 className="text-lg font-semibold mb-2">{t('addNewLink')}</h4>
                     <div className="grid grid-cols-3 gap-4">
                         <input
                             type="text"
                             name="path"
-                            placeholder="Path (e.g., /new-page)"
+                            placeholder={t('pathPlaceholder')}
                             value={newLink.path}
                             onChange={handleInputChange}
                             className="border p-2 rounded w-full"
@@ -123,7 +125,7 @@ const SidebarLinkManagement = ({ userRole }) => {
                         <input
                             type="text"
                             name="label"
-                            placeholder="Label (e.g., New Page)"
+                            placeholder={t('labelPlaceholder')}
                             value={newLink.label}
                             onChange={handleInputChange}
                             className="border p-2 rounded w-full"
@@ -148,7 +150,7 @@ const SidebarLinkManagement = ({ userRole }) => {
                         onClick={handleAddLink}
                         className="mt-4 bg-blue-500 text-white px-4 py-2 rounded"
                     >
-                        Add Link
+                        {t('addLink')}
                     </button>
                 </div>
             )}
