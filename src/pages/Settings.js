@@ -1,41 +1,43 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import RoleManagementForm from '../components/RoleManagementForm';
 import SidebarLinkManagement from '../components/SidebarLinkManagement';
 import FormFieldManagement from '../components/FormFieldManagement';
 
 const Settings = ({ userRole }) => {
+    const { t } = useTranslation();
     const [activeSection, setActiveSection] = useState('roleManagement');
     const [users, setUsers] = useState([]);
     const [sidebarLinks, setSidebarLinks] = useState([]);
     const [formFields, setFormFields] = useState([]);
 
     // Fetch data from the backend
-   useEffect(() => {
-    const fetchData = async () => {
-        try {
-            const userResponse = await fetch('https://timmodashboard.netlify.app/.netlify/functions/getUsers');
-            const sidebarResponse = await fetch(`https://timmodashboard.netlify.app/.netlify/functions/getSidebarLinks?role=${userRole}`);
-            const formFieldResponse = await fetch('https://timmodashboard.netlify.app/.netlify/functions/getFormFields');
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const userResponse = await fetch('https://timmodashboard.netlify.app/.netlify/functions/getUsers');
+                const sidebarResponse = await fetch(`https://timmodashboard.netlify.app/.netlify/functions/getSidebarLinks?role=${userRole}`);
+                const formFieldResponse = await fetch('https://timmodashboard.netlify.app/.netlify/functions/getFormFields');
 
-            if (!userResponse.ok || !sidebarResponse.ok || !formFieldResponse.ok) {
-                throw new Error('One or more API requests failed.');
+                if (!userResponse.ok || !sidebarResponse.ok || !formFieldResponse.ok) {
+                    throw new Error('One or more API requests failed.');
+                }
+
+                const usersData = await userResponse.json();
+                const sidebarData = await sidebarResponse.json();
+                const formFieldsData = await formFieldResponse.json();
+
+                setUsers(usersData);
+                setSidebarLinks(sidebarData.links || []);
+                setFormFields(formFieldsData.fields || []);
+            } catch (error) {
+                console.error('Error fetching settings data:', error);
             }
+        };
 
-            const usersData = await userResponse.json();
-            const sidebarData = await sidebarResponse.json();
-            const formFieldsData = await formFieldResponse.json();
+        fetchData();
+    }, [userRole]);
 
-            setUsers(usersData);
-            setSidebarLinks(sidebarData.links || []); // Ensure sidebarLinks is always an array
-            setFormFields(formFieldsData.fields || []);
-        } catch (error) {
-            console.error('Error fetching settings data:', error);
-        }
-    };
-
-    fetchData();
-}, [userRole]);
-    
     // Backend update functions
     const handleSaveUser = async (newUser) => {
         try {
@@ -91,7 +93,7 @@ const Settings = ({ userRole }) => {
         }
     };
 
-    // Updated permissions structure (Fixing reduce issue)
+    // Updated permissions structure
     const permissionsChecklist = {
         sidebarLinks: sidebarLinks.length > 0 
             ? sidebarLinks.reduce((acc, link) => {
@@ -104,7 +106,7 @@ const Settings = ({ userRole }) => {
                 "/clients": false,
                 "/agents": false,
                 "/settings": false
-            }, // Default structure if empty
+            },
 
         buttons: {
             addUser: false,
@@ -144,7 +146,7 @@ const Settings = ({ userRole }) => {
                         userRole={userRole}
                     />
                 ) : (
-                    <p className="text-red-500">Access Denied</p>
+                    <p className="text-red-500">{t('accessDenied')}</p>
                 );
             case 'formFields':
                 return userRole === 'Super Admin' || userRole === 'Admin' ? (
@@ -153,7 +155,7 @@ const Settings = ({ userRole }) => {
                         onFormFieldUpdate={handleFormFieldUpdate}
                     />
                 ) : (
-                    <p className="text-red-500">Access Denied</p>
+                    <p className="text-red-500">{t('accessDenied')}</p>
                 );
             default:
                 return null;
@@ -162,7 +164,7 @@ const Settings = ({ userRole }) => {
 
     return (
         <div className="p-10">
-            <h1 className="text-3xl font-bold mb-6">Settings - Manage Users, Sidebar, and Forms</h1>
+            <h1 className="text-3xl font-bold mb-6">{t('settingsTitle')}</h1>
 
             {/* Section Tabs */}
             <div className="flex gap-4 mb-6">
@@ -175,7 +177,7 @@ const Settings = ({ userRole }) => {
                     onClick={() => setActiveSection('roleManagement')}
                     aria-selected={activeSection === 'roleManagement'}
                 >
-                    Role Management
+                    {t('roleManagement')}
                 </button>
                 {userRole === 'Super Admin' || userRole === 'Admin' ? (
                     <>
@@ -188,7 +190,7 @@ const Settings = ({ userRole }) => {
                             onClick={() => setActiveSection('sidebar')}
                             aria-selected={activeSection === 'sidebar'}
                         >
-                            Sidebar Management
+                            {t('sidebarManagement')}
                         </button>
                         <button
                             className={`px-4 py-2 rounded transition duration-200 ease-in-out focus:ring-2 ${
@@ -199,7 +201,7 @@ const Settings = ({ userRole }) => {
                             onClick={() => setActiveSection('formFields')}
                             aria-selected={activeSection === 'formFields'}
                         >
-                            Form Field Management
+                            {t('formFieldManagement')}
                         </button>
                     </>
                 ) : null}
