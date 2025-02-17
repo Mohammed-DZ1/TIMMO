@@ -1,3 +1,5 @@
+const jwt = require('jsonwebtoken');
+
 exports.handler = async (event) => {
     if (event.httpMethod !== 'POST') {
         return {
@@ -8,18 +10,26 @@ exports.handler = async (event) => {
 
     const { email, password } = JSON.parse(event.body);
 
-    // Read credentials from Netlify environment variables
-    const adminEmail = process.env.REACT_APP_AUTH_EMAIL;
-    const adminPassword = process.env.REACT_APP_AUTH_PASSWORD;
+    // Environment variables for super admin credentials
+    const superAdminEmail = process.env.SUPER_ADMIN_EMAIL;
+    const superAdminPassword = process.env.SUPER_ADMIN_PASSWORD;
+    const secretKey = process.env.JWT_SECRET; // JWT secret stored in Netlify env variables
 
-    // Check if the credentials are correct
-    if (email === adminEmail && password === adminPassword) {
+    // Validate credentials
+    if (email === superAdminEmail && password === superAdminPassword) {
+        // Generate JWT token
+        const token = jwt.sign(
+            { email, role: 'Super Admin' },
+            secretKey,
+            { expiresIn: '2h' } // Token expires in 2 hours
+        );
+
         return {
             statusCode: 200,
             body: JSON.stringify({
                 message: 'Login successful',
                 role: 'Super Admin',
-                token: 'super_admin_token', // Replace with a proper JWT implementation later
+                token,
             }),
         };
     }
