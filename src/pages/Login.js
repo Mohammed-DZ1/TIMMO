@@ -12,18 +12,14 @@ const Login = () => {
         e.preventDefault();
 
         try {
-            const response = await axios.post('/.netlify/functions/Login', { email, password });
+            const response = await axios.post('/.netlify/functions/login', { email, password }, { withCredentials: true });
 
             if (response.status === 200) {
                 const { role, token } = response.data;
 
-                // Set token expiry for 24 hours
-                const tokenExpiryTime = new Date().getTime() + 24 * 60 * 60 * 1000;  // 24 hours
-
-                // Store user role, auth token, and expiry time
-                localStorage.setItem('userRole', role);
-                localStorage.setItem('authToken', token);
-                localStorage.setItem('tokenExpiry', tokenExpiryTime);
+                sessionStorage.setItem('userRole', role);
+                sessionStorage.setItem('authToken', token);
+                sessionStorage.setItem('tokenExpiry', Date.now() + 24 * 60 * 60 * 1000);
 
                 alert('Login successful!');
                 navigate('/');  // Redirect to dashboard
