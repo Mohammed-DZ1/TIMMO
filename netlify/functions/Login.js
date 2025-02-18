@@ -9,28 +9,19 @@ exports.handler = async (event) => {
     }
 
     const { email, password } = JSON.parse(event.body);
-
-    // Environment variables for super admin credentials
     const superAdminEmail = process.env.SUPER_ADMIN_EMAIL;
     const superAdminPassword = process.env.SUPER_ADMIN_PASSWORD;
-    const secretKey = process.env.JWT_SECRET; // JWT secret stored in Netlify env variables
+    const secretKey = process.env.JWT_SECRET;
 
-    // Validate credentials
     if (email === superAdminEmail && password === superAdminPassword) {
-        // Generate JWT token
-        const token = jwt.sign(
-            { email, role: 'Super Admin' },
-            secretKey,
-            { expiresIn: '2h' } // Token expires in 2 hours
-        );
+        const token = jwt.sign({ email, role: 'Super Admin' }, secretKey, { expiresIn: '2h' });
 
         return {
             statusCode: 200,
-            body: JSON.stringify({
-                message: 'Login successful',
-                role: 'Super Admin',
-                token,
-            }),
+            headers: {
+                'Set-Cookie': `authToken=${token}; HttpOnly; Path=/; Max-Age=7200; Secure; SameSite=Strict`,
+            },
+            body: JSON.stringify({ message: 'Login successful', email, role: 'Super Admin' }),
         };
     }
 
