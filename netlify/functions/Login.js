@@ -14,14 +14,26 @@ exports.handler = async (event) => {
     const secretKey = process.env.JWT_SECRET;
 
     if (email === superAdminEmail && password === superAdminPassword) {
-        const token = jwt.sign({ email, role: 'Super Admin' }, secretKey, { expiresIn: '2h' });
+        // 
+        const token = jwt.sign(
+            { email, role: 'Super Admin' },
+            secretKey,
+            { expiresIn: '24h' }
+        );
 
         return {
             statusCode: 200,
             headers: {
-                'Set-Cookie': `authToken=${token}; HttpOnly; Path=/; Max-Age=7200; Secure; SameSite=Strict`,
+                'Set-Cookie': `authToken=${token}; HttpOnly; Path=/; Max-Age=${24 * 60 * 60}; Secure; SameSite=Strict`,
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Credentials': 'true',
             },
-            body: JSON.stringify({ message: 'Login successful', email, role: 'Super Admin' }),
+            body: JSON.stringify({
+                message: 'Login successful',
+                token,  
+                email,
+                role: 'Super Admin',
+            }),
         };
     }
 
