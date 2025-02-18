@@ -1,11 +1,17 @@
 [build]
-  command = "npm run build"
+  command = "npm install && npm run build"
   publish = "build"
 
 [functions]
   directory = "netlify/functions"
+  node_bundler = "esbuild"  
+[dev]
+  framework = "create-react-app"
 
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
+
+[[plugins]]
+  package = "@netlify/plugin-functions-install-core"
