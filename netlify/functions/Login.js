@@ -39,7 +39,7 @@ exports.handler = async (event) => {
 
    
     if (email === superAdminEmail && password === superAdminPassword) {
-        // ✅ Generate JWT Token
+        
         const token = jwt.sign(
             { email, role: 'Super Admin' },
             secretKey,
