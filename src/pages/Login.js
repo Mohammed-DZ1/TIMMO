@@ -12,7 +12,7 @@ const Login = () => {
         e.preventDefault();
 
         try {
-            const response = await axios.post('/.netlify/functions/login', // Fixed API path casing
+            const response = await axios.post('/.netlify/functions/Login', // Fixed API path casing
                 { email, password },
                 {
                     withCredentials: true,
