@@ -12,20 +12,28 @@ const Login = () => {
         e.preventDefault();
 
         try {
-            const response = await axios.post('/.netlify/functions/login', { email, password }, { withCredentials: true });
+            const response = await axios.post('/.netlify/functions/login', 
+                { email, password }, 
+                { 
+                    withCredentials: true, 
+                    headers: { 'Content-Type': 'application/json' }
+                }
+            );
 
             if (response.status === 200) {
-                const { role, token } = response.data;
+                const { token, role } = response.data;
 
-                sessionStorage.setItem('userRole', role);
+               
                 sessionStorage.setItem('authToken', token);
-                sessionStorage.setItem('tokenExpiry', Date.now() + 24 * 60 * 60 * 1000);
+                sessionStorage.setItem('userRole', role);
+                sessionStorage.setItem('tokenExpiry', Date.now() + 24 * 60 * 60 * 1000);  // 24 hours expiry
 
                 alert('Login successful!');
                 navigate('/');  // Redirect to dashboard
             }
         } catch (error) {
-            setErrorMessage('Invalid email or password. Please try again.');
+            console.error('Login error:', error.response?.data?.message || error.message);
+            setErrorMessage(error.response?.data?.message || 'Invalid email or password. Please try again.');
         }
     };
 
