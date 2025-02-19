@@ -26,7 +26,7 @@ const Login = () => {
                
                 sessionStorage.setItem('authToken', token);
                 sessionStorage.setItem('userRole', role);
-                sessionStorage.setItem('tokenExpiry', Date.now() + 24 * 60 * 60 * 1000);  // 24 hours expiry
+                sessionStorage.setItem('tokenExpiry', 24h);  // 24 hours expiry
 
                 alert('Login successful!');
                 navigate('/');  // Redirect to dashboard
