@@ -12,7 +12,7 @@ const Login = () => {
         e.preventDefault();
 
         try {
-            const response = await axios.post('/.netlify/functions/login', 
+            const response = await axios.post('/.netlify/functions/Login', 
                 { email, password }, 
                 { 
                     withCredentials: true, 
