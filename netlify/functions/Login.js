@@ -42,10 +42,9 @@ exports.handler = async (event) => {
 
         // Validate Credentials
         if (email === superAdminEmail && password === superAdminPassword) {
-            const token = jwt.sign(
-    { email, role: 'Super Admin', exp: Math.floor(Date.now() / 1000) + (24 * 60 * 60) }, // Expires in 24 hours
-    secretKey
-);
+            const token = jwt.sign
+
+({ email, role: 'Super Admin' }, secretkey, { expiresIn: '24h' });
 
             return {
                 statusCode: 200,
