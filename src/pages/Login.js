@@ -21,12 +21,11 @@ const Login = () => {
             );
 
             if (response.status === 200) {
-                const { token, role } = response.data;
+                const tokenExpiryTime
 
-                // Correctly setting token expiry time
-                sessionStorage.setItem('authToken', token);
-                sessionStorage.setItem('userRole', role);
-                sessionStorage.setItem('tokenExpiry', Date.now() + 24 * 60 * 60 * 1000);  //  Fix: Set expiry in milliseconds
+= new Date().getTime() + 24 * 60 * 60 *
+
+1000; //24 hours
 
                 alert('Login successful!');
                 navigate('/');  // Redirect to dashboard
