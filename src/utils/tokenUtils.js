@@ -5,7 +5,7 @@ export const isTokenExpired = () => {
     const tokenExpiry = sessionStorage.getItem('tokenExpiry');
 
     if (!token || !tokenExpiry) {
-        console.warn("No token or expiry found. Expiring session.");
+        console.warn("expiry found. Expiring session.");
         return true;
     }
 
