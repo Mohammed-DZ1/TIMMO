@@ -4,15 +4,16 @@ export const isTokenExpired = () => {
     const token = sessionStorage.getItem('authToken');
     const tokenExpiry = sessionStorage.getItem('tokenExpiry');
 
-    if (!token || !tokenExpiry) return true;
+    if (!token || !tokenExpiry) {
+        console.warn("No token or expiry found. Expiring session.");
+        return true;
+    }
 
     try {
-        const decoded = jwtDecode(token);
         const currentTime = Date.now();
-
-        return currentTime >= parseInt(tokenExpiry);
+        return currentTime >= parseInt(tokenExpiry, 10); 
     } catch (error) {
         console.error('Invalid token:', error);
-        return true;
+        return true; 
     }
 };
