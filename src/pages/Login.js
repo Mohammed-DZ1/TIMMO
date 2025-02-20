@@ -12,7 +12,7 @@ const Login = () => {
         e.preventDefault();
 
         try {
-            const response = await axios.post('/.netlify/functions/Login', // Fixed API path casing
+            const response = await axios.post('/.netlify/functions/Login',
                 { email, password },
                 {
                     withCredentials: true,
@@ -21,14 +21,15 @@ const Login = () => {
             );
 
             if (response.status === 200) {
-                const tokenExpiryTime
+                const { token, role } = response.data;
 
-= new Date().getTime() + 24 * 60 * 60 *
 
-1000; //24 hours
+                sessionStorage.setItem('authToken', token);
+                sessionStorage.setItem('userRole', role);
+                sessionStorage.setItem('tokenExpiry', Date.now() + 24 * 60 * 60 * 1000)
 
                 alert('Login successful!');
-                navigate('/');  // Redirect to dashboard
+                navigate('/');  
             }
         } catch (error) {
             console.error('Login error:', error.response?.data?.message || error.message);
