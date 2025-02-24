@@ -1,7 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import Button3D from './Button3D';
-import { Clock, Calendar, CalendarDays } from 'react-feather';
+import { Clock, Calendar } from 'react-feather';
 
 const TimeRangeSelector = ({ value, onChange }) => {
     const { t } = useTranslation();
@@ -9,7 +9,7 @@ const TimeRangeSelector = ({ value, onChange }) => {
     const options = [
         { value: 'day', label: t('daily'), icon: Clock },
         { value: 'month', label: t('monthly'), icon: Calendar },
-        { value: 'year', label: t('yearly'), icon: CalendarDays }
+        { value: 'year', label: t('yearly'), icon: Calendar }
     ];
 
     return (
