@@ -1,0 +1,8 @@
+{
+  "name": "timmo-functions",
+  "version": "1.0.0",
+  "dependencies": {
+    "jsonwebtoken": "^9.0.0",
+    "mongodb": "^5.7.0"
+  }
+}
