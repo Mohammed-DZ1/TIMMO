@@ -24,6 +24,7 @@ const useAuth = () => {
                 setRole(response.data.role);
                 return true;
             }
+            return false;
         } catch (error) {
             // Only set error for non-401 responses
             if (error.response?.status !== 401) {
@@ -37,13 +38,17 @@ const useAuth = () => {
         }
     }, []);
 
-    // Set up periodic token refresh
+    // Initial auth check
+    useEffect(() => {
+        checkAuth();
+    }, [checkAuth]);
+
+    // Set up periodic token refresh - every 10 minutes
     useEffect(() => {
         let refreshInterval;
 
         if (user) {
-            // Check auth status every 5 minutes
-            refreshInterval = setInterval(checkAuth, 5 * 60 * 1000);
+            refreshInterval = setInterval(checkAuth, 10 * 60 * 1000);
         }
 
         return () => {
@@ -52,11 +57,6 @@ const useAuth = () => {
             }
         };
     }, [user, checkAuth]);
-
-    // Initial auth check
-    useEffect(() => {
-        checkAuth();
-    }, [checkAuth]);
 
     const login = async (email, password) => {
         try {
@@ -75,10 +75,10 @@ const useAuth = () => {
             );
 
             if (response.status === 200) {
-                setUser(response.data.email);
-                setRole(response.data.role);
+                await checkAuth(); // Verify the session immediately after login
                 return true;
             }
+            return false;
         } catch (error) {
             setError(error.response?.data?.message || 'Login failed');
             console.error('Login failed:', error.response?.data || error);
@@ -104,10 +104,6 @@ const useAuth = () => {
             setUser(null);
             setRole(null);
             setLoading(false);
-            // Clear any cached requests
-            if (window.location.pathname !== '/login') {
-                window.location.href = '/login';
-            }
         }
     };
 
