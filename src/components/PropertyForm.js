@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 
 const PropertyForm = ({ onSubmit, withCommission = false, clientOwned = false, clientId = null }) => {
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
     const [propertyData, setPropertyData] = useState({
         propertyId: uuidv4(),
         title: '',
@@ -62,13 +64,65 @@ const PropertyForm = ({ onSubmit, withCommission = false, clientOwned = false, c
         }));
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        onSubmit(propertyData);
+        
+        try {
+            setLoading(true);
+            setError(null);
+
+            // If this is part of a client form, just pass the data up
+            if (clientOwned) {
+                onSubmit(propertyData);
+                return;
+            }
+
+            // Otherwise, save directly to backend
+            const response = await fetch('https://timmodashboard.netlify.app/.netlify/functions/saveProperty', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'include',
+                body: JSON.stringify(propertyData)
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Failed to save property');
+            }
+
+            const result = await response.json();
+            onSubmit && onSubmit(result);
+
+        } catch (err) {
+            console.error('Error saving property:', err);
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
         <form onSubmit={handleSubmit} className="space-y-6">
+            {error && (
+                <div className="rounded-md bg-red-50 p-4">
+                    <div className="flex">
+                        <div className="flex-shrink-0">
+                            <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                            </svg>
+                        </div>
+                        <div className="ml-3">
+                            <h3 className="text-sm font-medium text-red-800">Error</h3>
+                            <div className="mt-2 text-sm text-red-700">
+                                <p>{error}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
                 <div>
                     <label className="block text-sm font-medium text-gray-700">Title</label>
@@ -274,9 +328,10 @@ const PropertyForm = ({ onSubmit, withCommission = false, clientOwned = false, c
             <div className="flex justify-end">
                 <button
                     type="submit"
-                    className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+                    disabled={loading}
+                    className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50"
                 >
-                    Save Property
+                    {loading ? 'Saving...' : 'Save Property'}
                 </button>
             </div>
         </form>
