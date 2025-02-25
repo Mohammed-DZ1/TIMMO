@@ -1,9 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import TimeRangeSelector from '../components/TimeRangeSelector';
 import KpiCard from '../components/KpiCard';
-import { useAuth } from '../hooks/useAuth';
-import { useSettings } from '../hooks/useSettings';
 import { FiHome, FiUsers, FiTrendingUp, FiDollarSign, FiClock, FiPercent } from 'react-icons/fi';
 import LineChart from '../components/LineChart';
 import PieChart from '../components/PieChart';
@@ -12,8 +9,6 @@ import FilterDropdown from '../components/FilterDropdown';
 
 const Dashboard = () => {
     const { t } = useTranslation();
-    const { user } = useAuth();
-    const { settings } = useSettings();
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [dateRange, setDateRange] = useState({ start: null, end: null });
@@ -57,10 +52,8 @@ const Dashboard = () => {
             }
         };
 
-        if (user) {
-            fetchDashboardData();
-        }
-    }, [dateRange, selectedFilter, user]);
+        fetchDashboardData();
+    }, [dateRange, selectedFilter]);
 
     const filterOptions = [
         { value: 'all', label: t('allProperties') },
