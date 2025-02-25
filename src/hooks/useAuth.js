@@ -33,7 +33,7 @@ export const AuthProvider = ({ children }) => {
         try {
             setLoading(true);
             setError(null);
-            const response = await axios.post('/.netlify/functions/login', 
+            const response = await axios.post('/.netlify/functions/Login', 
                 { email, password },
                 { withCredentials: true }
             );
