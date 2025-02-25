@@ -1,12 +1,18 @@
 [build]
-  command = "npm install && npm run build"
+  command = "CI=false npm install && npm run build"
   publish = "build"
+  functions = "netlify/functions"
 
 [functions]
   directory = "netlify/functions"
   node_bundler = "esbuild"  
+
 [dev]
-  framework = "create-react-app"
+  command = "npm run start"
+  publish = "build"
+  port = 8888
+  targetPort = 3000
+  framework = "#custom"
 
 [[redirects]]
   from = "/*"
