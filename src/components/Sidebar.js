@@ -43,6 +43,11 @@ const Sidebar = () => {
 
     useEffect(() => {
         const fetchLinks = async () => {
+            if (!user) {
+                setLinks(defaultLinks);
+                return;
+            }
+
             try {
                 const response = await fetch('https://timmodashboard.netlify.app/.netlify/functions/getSidebarLinks', {
                     method: 'POST',
@@ -51,7 +56,7 @@ const Sidebar = () => {
                         'Accept': 'application/json'
                     },
                     credentials: 'include',
-                    body: JSON.stringify({ role: user?.role })
+                    body: JSON.stringify({ role: user.role || 'user' })
                 });
 
                 if (!response.ok) {
@@ -59,7 +64,7 @@ const Sidebar = () => {
                 }
 
                 const data = await response.json();
-                if (data && data.links && Array.isArray(data.links)) {
+                if (data && Array.isArray(data.links)) {
                     setLinks(data.links);
                 } else {
                     console.warn('Using default links - received:', data);
@@ -72,7 +77,7 @@ const Sidebar = () => {
         };
 
         fetchLinks();
-    }, [user?.role]);
+    }, [user]);
 
     const handleLogout = async () => {
         try {
@@ -82,6 +87,10 @@ const Sidebar = () => {
             console.error('Logout failed:', error);
         }
     };
+
+    if (!user) {
+        return null;
+    }
 
     return (
         <div
