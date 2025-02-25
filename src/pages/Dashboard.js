@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import useAuth from '../hooks/useAuth';
 import TimeRangeSelector from '../components/TimeRangeSelector';
 import KpiCard from '../components/KpiCard';
 import { FiHome, FiUsers, FiTrendingUp, FiDollarSign, FiClock, FiPercent } from 'react-icons/fi';
@@ -34,6 +35,8 @@ const Dashboard = () => {
 
     useEffect(() => {
         const fetchDashboardData = async () => {
+            if (!user) return;
+
             try {
                 setLoading(true);
                 setError(null);
@@ -44,7 +47,12 @@ const Dashboard = () => {
                     filter: selectedFilter
                 });
 
-                const response = await fetch(`https://timmodashboard.netlify.app/.netlify/functions/getDashboardStats?${queryParams}`);
+                const response = await fetch(`https://timmodashboard.netlify.app/.netlify/functions/getDashboardStats?${queryParams}`, {
+                    credentials: 'include',
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
 
                 if (!response.ok) {
                     throw new Error('Failed to fetch dashboard data');
@@ -53,16 +61,14 @@ const Dashboard = () => {
                 const data = await response.json();
                 setDashboardData(data);
             } catch (err) {
-                setError(err.message);
                 console.error('Error fetching dashboard data:', err);
+                setError(err.message);
             } finally {
                 setLoading(false);
             }
         };
 
-        if (user) {
-            fetchDashboardData();
-        }
+        fetchDashboardData();
     }, [dateRange, selectedFilter, user]);
 
     const filterOptions = [
