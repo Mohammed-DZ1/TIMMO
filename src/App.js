@@ -20,42 +20,50 @@ const MainLayout = () => {
     }
 
     return (
-        <div className="flex h-screen">
+        <div className="flex min-h-screen bg-gray-100">
             <Sidebar />
-            <main className="flex-1 p-8 md:p-6 bg-gray-100 overflow-auto">
-                <Routes>
-                    <Route path="/" element={<Dashboard />} />
-                    <Route path="/properties" element={<Properties />} />
-                    <Route path="/clients" element={<Clients />} />
-                    <Route path="/agents" element={<Agents />} />
-                    <Route path="/settings" element={<Settings />} />
-                </Routes>
-            </main>
+            <div className="flex-1 flex flex-col">
+                <header className="bg-white shadow">
+                    <div className="px-4 py-6">
+                        <LanguageSelector />
+                    </div>
+                </header>
+                <main className="flex-1 p-6">
+                    <Routes>
+                        <Route path="/" element={<Dashboard />} />
+                        <Route path="/properties" element={<Properties />} />
+                        <Route path="/clients" element={<Clients />} />
+                        <Route path="/agents" element={<Agents />} />
+                        <Route path="/settings" element={<Settings />} />
+                    </Routes>
+                </main>
+            </div>
         </div>
     );
 };
 
 const App = () => {
     const { loading, user } = useAuth();
+    const { t } = useTranslation();
 
     if (loading) {
         return (
             <div className="flex items-center justify-center min-h-screen bg-gray-100">
-                <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-primary-500"></div>
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-primary-600 mx-auto"></div>
+                    <p className="mt-4 text-gray-600">{t('Loading...')}</p>
+                </div>
             </div>
         );
     }
 
     return (
-        <>
-            <LanguageSelector />
-            <Routes>
-                <Route path="/login" element={
-                    user ? <Navigate to="/" replace /> : <Login />
-                } />
-                <Route path="/*" element={<MainLayout />} />
-            </Routes>
-        </>
+        <Routes>
+            <Route path="/login" element={
+                user ? <Navigate to="/" replace /> : <Login />
+            } />
+            <Route path="/*" element={<MainLayout />} />
+        </Routes>
     );
 };
 
