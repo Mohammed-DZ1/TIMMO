@@ -4,6 +4,8 @@ import PropertyForm from './PropertyForm';
 
 const ClientForm = ({ onSubmit, initialType = null }) => {
     const [clientType, setClientType] = useState(initialType);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
     const [clientData, setClientData] = useState({
         clientId: uuidv4(),
         name: '',
@@ -50,7 +52,37 @@ const ClientForm = ({ onSubmit, initialType = null }) => {
             ...clientData,
             property: propertyData
         };
-        onSubmit(combinedData);
+        setClientData(combinedData);
+    };
+
+    const handleSubmit = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+
+            const response = await fetch('https://timmodashboard.netlify.app/.netlify/functions/saveClient', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'include',
+                body: JSON.stringify(clientData)
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Failed to save client');
+            }
+
+            const result = await response.json();
+            onSubmit && onSubmit(result);
+            
+        } catch (err) {
+            console.error('Error saving client:', err);
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
     };
 
     if (!clientType) {
@@ -79,6 +111,24 @@ const ClientForm = ({ onSubmit, initialType = null }) => {
 
     return (
         <div className="space-y-8">
+            {error && (
+                <div className="rounded-md bg-red-50 p-4">
+                    <div className="flex">
+                        <div className="flex-shrink-0">
+                            <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                            </svg>
+                        </div>
+                        <div className="ml-3">
+                            <h3 className="text-sm font-medium text-red-800">Error</h3>
+                            <div className="mt-2 text-sm text-red-700">
+                                <p>{error}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <div className="space-y-6">
                 <h2 className="text-lg font-medium text-gray-900">Client Information</h2>
                 <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
@@ -201,13 +251,14 @@ const ClientForm = ({ onSubmit, initialType = null }) => {
                 </div>
             )}
 
-            <div className="flex justify-end">
+            <div className="flex justify-end space-x-3">
                 <button
                     type="button"
-                    onClick={() => onSubmit(clientData)}
-                    className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+                    disabled={loading}
+                    onClick={handleSubmit}
+                    className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50"
                 >
-                    Save Client
+                    {loading ? 'Saving...' : 'Save Client'}
                 </button>
             </div>
         </div>
