@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
-import useAuth from '../hooks/useAuth';
 import { useTranslation } from 'react-i18next';
+import useAuth from '../hooks/useAuth';
 
 const Login = () => {
     const [email, setEmail] = useState('');
@@ -25,7 +25,7 @@ const Login = () => {
             navigate('/', { replace: true });
         } catch (error) {
             console.error('Login error:', error);
-            setErrorMessage(t('login.error') || 'Invalid email or password');
+            setErrorMessage(error.response?.data?.message || t('login.error') || 'Invalid credentials');
         }
     };
 
@@ -33,8 +33,8 @@ const Login = () => {
         <div className="min-h-screen flex items-center justify-center bg-secondary-500">
             <div className="bg-white p-8 rounded-2xl shadow-gold-lg w-full max-w-md">
                 <div className="text-center mb-8">
-                    <h2 className="text-3xl font-bold text-primary-500">{t('login.title')}</h2>
-                    <p className="text-secondary-400 mt-2">{t('login.subtitle')}</p>
+                    <h2 className="text-3xl font-bold text-primary-500">{t('login.title') || 'Login'}</h2>
+                    <p className="text-secondary-400 mt-2">{t('login.subtitle') || 'Welcome back!'}</p>
                 </div>
 
                 {errorMessage && (
@@ -46,7 +46,7 @@ const Login = () => {
                 <form onSubmit={handleLogin} className="space-y-6">
                     <div>
                         <label className="block text-sm font-medium text-secondary-500 mb-2">
-                            {t('login.email')}
+                            {t('login.email') || 'Email'}
                         </label>
                         <input
                             type="email"
@@ -58,7 +58,7 @@ const Login = () => {
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-secondary-500 mb-2">
-                            {t('login.password')}
+                            {t('login.password') || 'Password'}
                         </label>
                         <input
                             type="password"
@@ -72,7 +72,7 @@ const Login = () => {
                         type="submit"
                         className="w-full py-3 px-4 bg-gradient-to-r from-primary-500 to-primary-600 text-white font-medium rounded-xl hover:to-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transform transition-all duration-200 hover:scale-[1.02]"
                     >
-                        {t('login.submit')}
+                        {t('login.submit') || 'Sign In'}
                     </button>
                 </form>
             </div>
