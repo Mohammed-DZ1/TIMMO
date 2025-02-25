@@ -6,7 +6,7 @@ const api = axios.create({
 });
 
 // Login User (Uses Environment Variables if No Credentials Provided)
-export const loginUser = async (email = process.env.AUTH_EMAIL, password = process.env.AUTH_PASSWORD) => {
+export const loginUser = async (email, password) => {
     try {
         const response = await api.post('auth', { email, password });
         return response.data;
