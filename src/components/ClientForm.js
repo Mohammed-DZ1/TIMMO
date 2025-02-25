@@ -1,211 +1,216 @@
 import React, { useState, useEffect } from 'react';
-import { v4 as uuidv4 } from 'uuid';  // Generate unique IDs
+import { v4 as uuidv4 } from 'uuid';
+import PropertyForm from './PropertyForm';
 
-const ClientForm = ({ onSubmit }) => {
-    const [visibleFields, setVisibleFields] = useState({});
+const ClientForm = ({ onSubmit, initialType = null }) => {
+    const [clientType, setClientType] = useState(initialType);
     const [clientData, setClientData] = useState({
-        clientId: uuidv4(),  // Auto-generated client ID
+        clientId: uuidv4(),
         name: '',
         phoneNumber: '',
-        clientType: 'Seller',  // Default to Seller
-        source: 'Facebook',
+        email: '',
+        type: '',  // OWNER or SEEKER
+        role: '',  // SELLER, RENTER, BUYER, or TENANT
+        source: 'Direct',
         preferredContact: 'Phone',
+        preferences: {},  // For SEEKER type
     });
 
-    const [propertyData, setPropertyData] = useState({
-        propertyId: uuidv4(),  // Auto-generated property ID
-        title: '',
-        type: 'Residential',
-        category: 'For Sale',
-        price: '',
-        location: '',
-        status: 'Available',
-        floorArea: '',
-        bedrooms: '',
-        bathrooms: '',
-        yearBuilt: '',
-        amenities: '',
-        media: [],
-        description: '',
-    });
+    const [showPropertyForm, setShowPropertyForm] = useState(false);
 
-    const [showPropertyForm, setShowPropertyForm] = useState(true);  // Default to show for owners
+    const handleClientTypeSelect = (type, role) => {
+        setClientType(type);
+        setClientData(prev => ({
+            ...prev,
+            type,
+            role,
+            preferences: type === 'SEEKER' ? {
+                propertyType: '',
+                priceRange: { min: '', max: '' },
+                location: '',
+                bedrooms: '',
+                bathrooms: '',
+                amenities: []
+            } : {}
+        }));
+        setShowPropertyForm(type === 'OWNER');
+    };
 
-    useEffect(() => {
-        const visibilitySettings = JSON.parse(localStorage.getItem('visibilitySettings')) || {};
-        setVisibleFields(visibilitySettings['ClientForm'] || {});
-    }, []);
-
-    // Handle client form changes
-    const handleClientChange = (e) => {
+    const handleChange = (e) => {
         const { name, value } = e.target;
-        setClientData({ ...clientData, [name]: value });
-
-        // Toggle property form visibility based on client type
-        if (name === 'clientType') {
-            setShowPropertyForm(value === 'Seller' || value === 'Renter');
-        }
+        setClientData(prev => ({
+            ...prev,
+            [name]: value
+        }));
     };
 
-    // Handle property form changes
-    const handlePropertyChange = (e) => {
-        const { name, value } = e.target;
-        setPropertyData({ ...propertyData, [name]: value });
-    };
-
-    // Handle file input for media
-    const handleMediaChange = (e) => {
-        setPropertyData({ ...propertyData, media: Array.from(e.target.files) });
-    };
-
-    // Handle form submission
-    const handleSubmit = (e) => {
-        e.preventDefault();
-
+    const handlePropertySubmit = (propertyData) => {
+        // Combine client and property data
         const combinedData = {
             ...clientData,
-            property: showPropertyForm ? { ...propertyData, ownerId: clientData.clientId } : null,  // Link client and property by ID
+            property: propertyData
         };
-
         onSubmit(combinedData);
-
-        // Reset forms after submission
-        setClientData({
-            clientId: uuidv4(),
-            name: '',
-            phoneNumber: '',
-            clientType: 'Seller',
-            source: 'Facebook',
-            preferredContact: 'Phone',
-        });
-
-        setPropertyData({
-            propertyId: uuidv4(),
-            title: '',
-            type: 'Residential',
-            category: 'For Sale',
-            price: '',
-            location: '',
-            status: 'Available',
-            floorArea: '',
-            bedrooms: '',
-            bathrooms: '',
-            yearBuilt: '',
-            amenities: '',
-            media: [],
-            description: '',
-        });
     };
 
+    if (!clientType) {
+        return (
+            <div className="space-y-6">
+                <h2 className="text-lg font-medium text-gray-900">Select Client Type</h2>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <button
+                        onClick={() => handleClientTypeSelect('OWNER', 'SELLER')}
+                        className="relative border rounded-lg p-4 flex flex-col items-center hover:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    >
+                        <span className="text-lg font-medium">Property Owner</span>
+                        <span className="text-sm text-gray-500">Selling or Renting Out Property</span>
+                    </button>
+                    <button
+                        onClick={() => handleClientTypeSelect('SEEKER', 'BUYER')}
+                        className="relative border rounded-lg p-4 flex flex-col items-center hover:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    >
+                        <span className="text-lg font-medium">Property Seeker</span>
+                        <span className="text-sm text-gray-500">Looking to Buy or Rent</span>
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
     return (
-        <form onSubmit={handleSubmit} className="bg-white p-6 rounded-lg shadow-md">
-            <h2 className="text-2xl font-bold mb-4">Add New Client</h2>
-
-            {visibleFields.name && (
-                <div className="mb-4">
-                    <label className="block text-gray-700">Name</label>
-                    <input
-                        type="text"
-                        name="name"
-                        value={clientData.name}
-                        onChange={handleClientChange}
-                        className="w-full p-2 border rounded"
-                        required
-                    />
+        <div className="space-y-8">
+            <div className="space-y-6">
+                <h2 className="text-lg font-medium text-gray-900">Client Information</h2>
+                <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Name</label>
+                        <input
+                            type="text"
+                            name="name"
+                            value={clientData.name}
+                            onChange={handleChange}
+                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Phone Number</label>
+                        <input
+                            type="tel"
+                            name="phoneNumber"
+                            value={clientData.phoneNumber}
+                            onChange={handleChange}
+                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Email</label>
+                        <input
+                            type="email"
+                            name="email"
+                            value={clientData.email}
+                            onChange={handleChange}
+                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Role</label>
+                        <select
+                            name="role"
+                            value={clientData.role}
+                            onChange={handleChange}
+                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                        >
+                            {clientType === 'OWNER' ? (
+                                <>
+                                    <option value="SELLER">Seller</option>
+                                    <option value="RENTER">Renter</option>
+                                </>
+                            ) : (
+                                <>
+                                    <option value="BUYER">Buyer</option>
+                                    <option value="TENANT">Tenant</option>
+                                </>
+                            )}
+                        </select>
+                    </div>
                 </div>
-            )}
 
-            {visibleFields.phoneNumber && (
-                <div className="mb-4">
-                    <label className="block text-gray-700">Phone Number</label>
-                    <input
-                        type="text"
-                        name="phoneNumber"
-                        value={clientData.phoneNumber}
-                        onChange={handleClientChange}
-                        className="w-full p-2 border rounded"
-                        required
-                    />
-                </div>
-            )}
-
-            {visibleFields.clientType && (
-                <div className="mb-4">
-                    <label className="block text-gray-700">Client Type</label>
-                    <select
-                        name="clientType"
-                        value={clientData.clientType}
-                        onChange={handleClientChange}
-                        className="w-full p-2 border rounded"
-                    >
-                        <option value="Seller">Seller (Owner)</option>
-                        <option value="Renter">Renter (Owner)</option>
-                        <option value="Buyer">Buyer (Property Seeker)</option>
-                        <option value="Tenant">Tenant (Property Seeker)</option>
-                    </select>
-                </div>
-            )}
-
-            {visibleFields.source && (
-                <div className="mb-4">
-                    <label className="block text-gray-700">Source of Client</label>
-                    <select
-                        name="source"
-                        value={clientData.source}
-                        onChange={handleClientChange}
-                        className="w-full p-2 border rounded"
-                    >
-                        <option value="Facebook">Facebook</option>
-                        <option value="Agent">Agent</option>
-                        <option value="Business Card">Business Card</option>
-                        <option value="Collaborators">Collaborators</option>
-                        <option value="Phone Calls">Phone Calls</option>
-                    </select>
-                </div>
-            )}
-
-            {visibleFields.preferredContact && (
-                <div className="mb-4">
-                    <label className="block text-gray-700">Preferred Contact</label>
-                    <select
-                        name="preferredContact"
-                        value={clientData.preferredContact}
-                        onChange={handleClientChange}
-                        className="w-full p-2 border rounded"
-                    >
-                        <option value="Phone">Phone</option>
-                        <option value="WhatsApp">WhatsApp</option>
-                    </select>
-                </div>
-            )}
-
-            {/* Property Form (conditionally rendered) */}
-            {showPropertyForm && (
-                <div className="mt-6">
-                    <h3 className="text-xl font-bold mb-2">Property Details</h3>
-
-                    {visibleFields.title && (
-                        <div className="mb-4">
-                            <label className="block text-gray-700">Title</label>
-                            <input
-                                type="text"
-                                name="title"
-                                value={propertyData.title}
-                                onChange={handlePropertyChange}
-                                className="w-full p-2 border rounded"
-                                required
-                            />
+                {clientType === 'SEEKER' && (
+                    <div className="space-y-6">
+                        <h3 className="text-lg font-medium text-gray-900">Property Preferences</h3>
+                        <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">Property Type</label>
+                                <select
+                                    name="preferences.propertyType"
+                                    value={clientData.preferences.propertyType}
+                                    onChange={handleChange}
+                                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                                >
+                                    <option value="">Select Type</option>
+                                    <option value="apartment">Apartment</option>
+                                    <option value="house">House</option>
+                                    <option value="villa">Villa</option>
+                                    <option value="office">Office</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">Location</label>
+                                <input
+                                    type="text"
+                                    name="preferences.location"
+                                    value={clientData.preferences.location}
+                                    onChange={handleChange}
+                                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">Min Price</label>
+                                <input
+                                    type="number"
+                                    name="preferences.priceRange.min"
+                                    value={clientData.preferences.priceRange.min}
+                                    onChange={handleChange}
+                                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">Max Price</label>
+                                <input
+                                    type="number"
+                                    name="preferences.priceRange.max"
+                                    value={clientData.preferences.priceRange.max}
+                                    onChange={handleChange}
+                                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                                />
+                            </div>
                         </div>
-                    )}
+                    </div>
+                )}
+            </div>
 
-                    {/* Other property fields go here following the same logic */}
+            {showPropertyForm && (
+                <div className="space-y-6">
+                    <h3 className="text-lg font-medium text-gray-900">Property Information</h3>
+                    <PropertyForm 
+                        onSubmit={handlePropertySubmit}
+                        withCommission={true}
+                        clientOwned={true}
+                        clientId={clientData.clientId}
+                    />
                 </div>
             )}
 
-            <button type="submit" className="bg-blue-500 text-white p-2 rounded mt-4">
-                Submit Client and Property
-            </button>
-        </form>
+            <div className="flex justify-end">
+                <button
+                    type="button"
+                    onClick={() => onSubmit(clientData)}
+                    className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+                >
+                    Save Client
+                </button>
+            </div>
+        </div>
     );
 };
 
