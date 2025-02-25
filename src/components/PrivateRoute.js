@@ -1,25 +1,15 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
-import jwtDecode from 'jwt-decode';
-
-const isTokenExpired = () => {
-    const token = localStorage.getItem('authToken');
-    if (!token) return true;
-
-    try {
-        const decodedToken = jwtDecode(token);
-        return decodedToken.exp * 1000 < Date.now(); // Check if the token is expired
-    } catch (error) {
-        return true; // If decoding fails, consider token expired
-    }
-};
+import { useAuth } from '../hooks/useAuth';
 
 const PrivateRoute = ({ children }) => {
-    const token = localStorage.getItem('authToken');
+    const { user, loading } = useAuth();
 
-    if (!token || isTokenExpired()) {
-        alert('Session expired. Please log in again.');
-        localStorage.clear(); // Clear session storage
+    if (loading) {
+        return <div>Loading...</div>;
+    }
+
+    if (!user) {
         return <Navigate to="/login" />;
     }
 
