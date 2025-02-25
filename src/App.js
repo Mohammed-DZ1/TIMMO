@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
@@ -10,7 +10,6 @@ import Settings from './pages/Settings';
 import Login from './pages/Login';
 import PrivateRoute from './components/PrivateRoute';
 import LanguageSelector from './components/LanguageSelector';
-import { AuthProvider } from './hooks/useAuth';
 import './i18n';
 
 // Layout component for the authenticated pages
@@ -27,26 +26,22 @@ function App() {
     const { t } = useTranslation();
 
     return (
-        <AuthProvider>
-            <Router>
-                <div className="app-container">
-                    <LanguageSelector />
-                    <Routes>
-                        <Route path="/login" element={<Login />} />
-                        <Route element={<PrivateRoute />}>
-                            <Route element={<AuthLayout />}>
-                                <Route index element={<Dashboard />} />
-                                <Route path="properties" element={<Properties />} />
-                                <Route path="clients" element={<Clients />} />
-                                <Route path="agents" element={<Agents />} />
-                                <Route path="settings" element={<Settings />} />
-                            </Route>
-                        </Route>
-                        <Route path="*" element={<Navigate to="/" replace />} />
-                    </Routes>
-                </div>
-            </Router>
-        </AuthProvider>
+        <div className="app-container">
+            <LanguageSelector />
+            <Routes>
+                <Route path="/login" element={<Login />} />
+                <Route element={<PrivateRoute />}>
+                    <Route element={<AuthLayout />}>
+                        <Route index element={<Dashboard />} />
+                        <Route path="properties" element={<Properties />} />
+                        <Route path="clients" element={<Clients />} />
+                        <Route path="agents" element={<Agents />} />
+                        <Route path="settings" element={<Settings />} />
+                    </Route>
+                </Route>
+                <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+        </div>
     );
 }
 
