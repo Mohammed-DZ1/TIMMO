@@ -18,19 +18,7 @@ const Dashboard = () => {
     const [error, setError] = useState(null);
     const [dateRange, setDateRange] = useState({ start: null, end: null });
     const [selectedFilter, setSelectedFilter] = useState('all');
-    const [dashboardData, setDashboardData] = useState({
-        activeProperties: 0,
-        totalAgents: 0,
-        revenueGrowth: 0,
-        averagePrice: 0,
-        averageDaysOnMarket: 0,
-        conversionRate: 0,
-        agentPerformance: [],
-        revenueHistory: [],
-        propertyDistribution: { forSale: [], forRent: [], both: [] },
-        propertyTypes: [],
-        topPerformingAreas: []
-    });
+    const [dashboardData, setDashboardData] = useState(null);
 
     useEffect(() => {
         const fetchDashboardData = async () => {
@@ -70,7 +58,7 @@ const Dashboard = () => {
         };
 
         fetchDashboardData();
-    }, [dateRange, selectedFilter, user]);
+    }, [user, dateRange, selectedFilter]);
 
     const filterOptions = [
         { value: 'all', label: t('dashboard.filters.all') || 'All Properties' },
@@ -120,10 +108,10 @@ const Dashboard = () => {
                         </div>
                         <div className="ml-3">
                             <h3 className="text-sm font-medium text-yellow-800">
-                                {t('No Data Available')}
+                                {t('dashboard.noData.title') || 'No Data Available'}
                             </h3>
                             <p className="mt-2 text-sm text-yellow-700">
-                                {t('No dashboard data is currently available.')}
+                                {t('dashboard.noData.message') || 'No dashboard data is currently available.'}
                             </p>
                         </div>
                     </div>
@@ -133,17 +121,13 @@ const Dashboard = () => {
     }
 
     return (
-        <div className="p-6 space-y-8">
-            <div className="flex justify-between items-center">
-                <h1 className="text-3xl font-bold text-secondary-900">
+        <div className="p-6">
+            <div className="flex justify-between items-center mb-6">
+                <h1 className="text-2xl font-semibold text-gray-900">
                     {t('dashboard.title') || 'Dashboard'}
                 </h1>
-                <div className="flex gap-4">
-                    <DateRangePicker
-                        startDate={dateRange.start}
-                        endDate={dateRange.end}
-                        onChange={setDateRange}
-                    />
+                <div className="flex space-x-4">
+                    <DateRangePicker value={dateRange} onChange={setDateRange} />
                     <FilterDropdown
                         options={filterOptions}
                         value={selectedFilter}
@@ -152,83 +136,65 @@ const Dashboard = () => {
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-                <KpiCard 
-                    title={t('activeProperties')} 
-                    value={dashboardData.activeProperties} 
-                    icon={<FiHome />} 
-                    color="bg-blue-600" 
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <KpiCard
+                    title={t('dashboard.kpis.activeProperties') || 'Active Properties'}
+                    value={dashboardData.activeProperties}
+                    icon={FiHome}
+                    color="gold"
                 />
-                <KpiCard 
-                    title={t('totalAgents')} 
-                    value={dashboardData.totalAgents} 
-                    icon={<FiUsers />} 
-                    color="bg-green-600" 
+                <KpiCard
+                    title={t('dashboard.kpis.totalAgents') || 'Total Agents'}
+                    value={dashboardData.totalAgents}
+                    icon={FiUsers}
+                    color="charcoal"
                 />
-                <KpiCard 
-                    title={t('revenueGrowth')} 
-                    value={dashboardData.revenueGrowth} 
-                    icon={<FiTrendingUp />} 
-                    color="bg-yellow-600" 
+                <KpiCard
+                    title={t('dashboard.kpis.revenueGrowth') || 'Revenue Growth'}
+                    value={dashboardData.revenueGrowth}
+                    icon={FiTrendingUp}
+                    color="success"
+                    suffix="%"
                 />
-                <KpiCard 
-                    title={t('averagePrice')} 
-                    value={dashboardData.averagePrice} 
-                    icon={<FiDollarSign />} 
-                    color="bg-purple-600" 
+                <KpiCard
+                    title={t('dashboard.kpis.averagePrice') || 'Average Price'}
+                    value={dashboardData.averagePrice}
+                    icon={FiDollarSign}
+                    color="gold"
+                    prefix="$"
                 />
-                <KpiCard 
-                    title={t('avgDaysOnMarket')} 
-                    value={dashboardData.averageDaysOnMarket} 
-                    icon={<FiClock />} 
-                    color="bg-red-600" 
+                <KpiCard
+                    title={t('dashboard.kpis.daysOnMarket') || 'Days on Market'}
+                    value={dashboardData.averageDaysOnMarket}
+                    icon={FiClock}
+                    color="charcoal"
+                    suffix=" days"
                 />
-                <KpiCard 
-                    title={t('conversionRate')} 
-                    value={dashboardData.conversionRate} 
-                    icon={<FiPercent />} 
-                    color="bg-indigo-600" 
+                <KpiCard
+                    title={t('dashboard.kpis.conversionRate') || 'Conversion Rate'}
+                    value={dashboardData.conversionRate}
+                    icon={FiPercent}
+                    color="success"
+                    suffix="%"
                 />
             </div>
 
-            {/* Charts Section */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-10">
-                {/* Agent Performance Chart */}
-                <div className="p-6 bg-white shadow-md rounded-lg">
-                    <h2 className="text-xl font-bold mb-4">{t('agentPerformance')}</h2>
-                    <LineChart
-                        data={dashboardData.agentPerformance}
-                        title={t('agentPerformance')}
-                    />
+            {dashboardData.charts && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+                    <div className="bg-white p-6 rounded-lg shadow">
+                        <h2 className="text-lg font-medium text-gray-900 mb-4">
+                            {t('dashboard.charts.revenue') || 'Revenue History'}
+                        </h2>
+                        <LineChart data={dashboardData.charts.monthlyRevenue} />
+                    </div>
+                    <div className="bg-white p-6 rounded-lg shadow">
+                        <h2 className="text-lg font-medium text-gray-900 mb-4">
+                            {t('dashboard.charts.properties') || 'Property Types'}
+                        </h2>
+                        <PieChart data={dashboardData.charts.propertyTypes} />
+                    </div>
                 </div>
-
-                {/* Property Distribution Chart */}
-                <div className="p-6 bg-white shadow-md rounded-lg">
-                    <h2 className="text-xl font-bold mb-4">{t('propertyDistribution')}</h2>
-                    <PieChart
-                        data={dashboardData.propertyDistribution[selectedFilter === 'all' ? 'both' : selectedFilter === 'sale' ? 'forSale' : 'forRent']}
-                        title={t('propertyDistribution')}
-                    />
-                </div>
-
-                {/* Property Types Chart */}
-                <div className="p-6 bg-white shadow-md rounded-lg">
-                    <h2 className="text-xl font-bold mb-4">{t('propertyTypes')}</h2>
-                    <PieChart
-                        data={dashboardData.propertyTypes}
-                        title={t('propertyTypes')}
-                    />
-                </div>
-
-                {/* Top Performing Areas Chart */}
-                <div className="p-6 bg-white shadow-md rounded-lg">
-                    <h2 className="text-xl font-bold mb-4">{t('topPerformingAreas')}</h2>
-                    <LineChart
-                        data={dashboardData.topPerformingAreas}
-                        title={t('topPerformingAreas')}
-                    />
-                </div>
-            </div>
+            )}
         </div>
     );
 };
