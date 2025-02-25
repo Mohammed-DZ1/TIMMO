@@ -1,14 +1,19 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import TimeRangeSelector from '../components/TimeRangeSelector';
 import KpiCard from '../components/KpiCard';
 import { FiHome, FiUsers, FiTrendingUp, FiDollarSign, FiClock, FiPercent } from 'react-icons/fi';
 import LineChart from '../components/LineChart';
 import PieChart from '../components/PieChart';
 import DateRangePicker from '../components/DateRangePicker';
 import FilterDropdown from '../components/FilterDropdown';
+import { auth } from '../hooks/useAuth';
+import { useSettings } from '../hooks/useSettings';
 
 const Dashboard = () => {
     const { t } = useTranslation();
+    const { user } = auth;
+    const { settings } = useSettings();
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [dateRange, setDateRange] = useState({ start: null, end: null });
@@ -32,28 +37,33 @@ const Dashboard = () => {
             try {
                 setLoading(true);
                 setError(null);
+
                 const queryParams = new URLSearchParams({
                     startDate: dateRange.start?.toISOString() || '',
                     endDate: dateRange.end?.toISOString() || '',
                     filter: selectedFilter
                 });
-                
+
                 const response = await fetch(`https://timmodashboard.netlify.app/.netlify/functions/getDashboardStats?${queryParams}`);
+
                 if (!response.ok) {
                     throw new Error('Failed to fetch dashboard data');
                 }
+
                 const data = await response.json();
                 setDashboardData(data);
-            } catch (error) {
-                console.error('Error fetching dashboard data:', error);
-                setError(error.message);
+            } catch (err) {
+                setError(err.message);
+                console.error('Error fetching dashboard data:', err);
             } finally {
                 setLoading(false);
             }
         };
 
-        fetchDashboardData();
-    }, [dateRange, selectedFilter]);
+        if (user) {
+            fetchDashboardData();
+        }
+    }, [dateRange, selectedFilter, user]);
 
     const filterOptions = [
         { value: 'all', label: t('allProperties') },
