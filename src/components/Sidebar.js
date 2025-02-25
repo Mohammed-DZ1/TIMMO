@@ -1,45 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
-import { FaSignOutAlt } from 'react-icons/fa';
+import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import useAuth from '../hooks/useAuth';
-import Logo from '../images/logo1.png';
-import * as icons from 'react-icons/fa';
 
 const defaultLinks = [
-    {
-        path: '/',
-        label: 'dashboard',
-        icon: 'FaHome'
-    },
-    {
-        path: '/properties',
-        label: 'properties',
-        icon: 'FaBuilding'
-    },
-    {
-        path: '/clients',
-        label: 'clients',
-        icon: 'FaUsers'
-    },
-    {
-        path: '/agents',
-        label: 'agents',
-        icon: 'FaUserTie'
-    },
-    {
-        path: '/settings',
-        label: 'settings',
-        icon: 'FaCog'
-    }
+    { to: '/', label: 'Dashboard', icon: '🏠' },
+    { to: '/properties', label: 'Properties', icon: '🏢' },
+    { to: '/clients', label: 'Clients', icon: '👥' },
+    { to: '/agents', label: 'Agents', icon: '👔' },
+    { to: '/settings', label: 'Settings', icon: '⚙️' }
 ];
 
 const Sidebar = () => {
     const { t } = useTranslation();
-    const { logout, user } = useAuth();
-    const [isHovered, setIsHovered] = useState(false);
+    const { user, logout } = useAuth();
+    const location = useLocation();
     const [links, setLinks] = useState(defaultLinks);
-    const navigate = useNavigate();
+    const [error, setError] = useState(null);
+    const [isCollapsed, setIsCollapsed] = useState(false);
 
     useEffect(() => {
         const fetchLinks = async () => {
@@ -64,14 +42,14 @@ const Sidebar = () => {
                 }
 
                 const data = await response.json();
-                if (data && Array.isArray(data.links)) {
+                if (Array.isArray(data.links)) {
                     setLinks(data.links);
                 } else {
-                    console.warn('Using default links - received:', data);
                     setLinks(defaultLinks);
                 }
-            } catch (error) {
-                console.error('Error fetching sidebar links:', error);
+            } catch (err) {
+                console.error('Error fetching sidebar links:', err);
+                setError(err.message);
                 setLinks(defaultLinks);
             }
         };
@@ -82,72 +60,63 @@ const Sidebar = () => {
     const handleLogout = async () => {
         try {
             await logout();
-            navigate('/login');
         } catch (error) {
             console.error('Logout failed:', error);
         }
     };
 
-    if (!user) {
-        return null;
-    }
-
     return (
-        <div
-            className={`bg-secondary-900 text-white h-screen transition-all duration-300 ${
-                isHovered ? 'w-64' : 'w-20'
-            } flex flex-col items-center`}
-            onMouseEnter={() => setIsHovered(true)}
-            onMouseLeave={() => setIsHovered(false)}
-        >
-            {/* Logo Section */}
-            <div className="mt-6 mb-8">
-                <img src={Logo} alt="TIMMO" className="w-12 h-12" />
+        <aside className={`bg-gray-800 text-white h-screen transition-all duration-300 ${isCollapsed ? 'w-20' : 'w-64'}`}>
+            <div className="flex items-center justify-between p-4 border-b border-gray-700">
+                <h1 className={`font-bold ${isCollapsed ? 'text-lg' : 'text-xl'}`}>
+                    {isCollapsed ? 'TI' : 'TIMMO'}
+                </h1>
+                <button
+                    onClick={() => setIsCollapsed(!isCollapsed)}
+                    className="p-2 rounded hover:bg-gray-700 transition-colors"
+                >
+                    {isCollapsed ? '→' : '←'}
+                </button>
             </div>
 
-            {/* Navigation Links */}
-            <nav className="flex-1 w-full">
-                <ul className="space-y-2 px-2">
-                    {links.map((link) => {
-                        const IconComponent = icons[link.icon];
-                        return (
-                            <li key={link.path}>
-                                <NavLink
-                                    to={link.path}
-                                    className={({ isActive }) =>
-                                        `flex items-center px-4 py-3 rounded-lg transition-colors duration-200 ${
-                                            isActive
-                                                ? 'bg-primary-500 text-white'
-                                                : 'text-gray-300 hover:bg-secondary-800 hover:text-white'
-                                        }`
-                                    }
-                                >
-                                    {IconComponent && <IconComponent className="w-5 h-5" />}
-                                    {isHovered && (
-                                        <span className="ml-4 text-sm font-medium">
-                                            {t(link.label)}
-                                        </span>
-                                    )}
-                                </NavLink>
-                            </li>
-                        );
-                    })}
+            {error && (
+                <div className="p-4 text-sm text-red-400 bg-red-900/20">
+                    {error}
+                </div>
+            )}
+
+            <nav className="mt-6">
+                <ul className="space-y-2">
+                    {links.map((link, index) => (
+                        <li key={index}>
+                            <Link
+                                to={link.to}
+                                className={`flex items-center px-4 py-3 transition-colors ${
+                                    location.pathname === link.to
+                                        ? 'bg-primary-600 text-white'
+                                        : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+                                }`}
+                            >
+                                <span className="text-xl">{link.icon}</span>
+                                {!isCollapsed && (
+                                    <span className="ml-3">{t(link.label)}</span>
+                                )}
+                            </Link>
+                        </li>
+                    ))}
                 </ul>
             </nav>
 
-            {/* Logout Button */}
-            <button
-                onClick={handleLogout}
-                className="w-full px-4 py-3 mb-6 flex items-center text-gray-300 hover:text-white hover:bg-red-600 transition-colors duration-200"
-            >
-                <FaSignOutAlt className="w-5 h-5" />
-                {isHovered && (
-                    <span className="ml-4 text-sm font-medium">
-                        {t('logout')}
-                    </span>
-                )}
-            </button>
-        </div>
+            <div className="absolute bottom-0 w-full p-4 border-t border-gray-700">
+                <button
+                    onClick={handleLogout}
+                    className="flex items-center justify-center w-full px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded transition-colors"
+                >
+                    <span>🚪</span>
+                    {!isCollapsed && <span className="ml-2">{t('Logout')}</span>}
+                </button>
+            </div>
+        </aside>
     );
 };
 
