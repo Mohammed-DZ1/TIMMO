@@ -1,252 +1,284 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { v4 as uuidv4 } from 'uuid';
 
-const PropertyForm = ({ onSubmit }) => {
-    const [visibleFields, setVisibleFields] = useState({});
+const PropertyForm = ({ onSubmit, withCommission = false, clientOwned = false, clientId = null }) => {
     const [propertyData, setPropertyData] = useState({
-        propertyId: '',
+        propertyId: uuidv4(),
         title: '',
-        type: 'Residential',
-        category: 'For Sale',
+        type: 'apartment',
+        category: 'sale',
         price: '',
         location: '',
-        status: 'Available',
+        status: 'available',
         floorArea: '',
         bedrooms: '',
         bathrooms: '',
         yearBuilt: '',
-        amenities: '',
-        media: [],
+        amenities: [],
         description: '',
+        ownership: clientOwned ? 'CLIENT' : 'AGENCY',
+        clientId: clientId,
+        commission: withCommission ? {
+            type: 'PERCENTAGE',
+            value: ''
+        } : null,
+        media: []
     });
-
-    useEffect(() => {
-        const visibilitySettings = JSON.parse(localStorage.getItem('visibilitySettings')) || {};
-        setVisibleFields(visibilitySettings['PropertyForm'] || {});
-    }, []);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
-        setPropertyData({ ...propertyData, [name]: value });
+        if (name.startsWith('commission.')) {
+            const field = name.split('.')[1];
+            setPropertyData(prev => ({
+                ...prev,
+                commission: {
+                    ...prev.commission,
+                    [field]: value
+                }
+            }));
+        } else {
+            setPropertyData(prev => ({
+                ...prev,
+                [name]: value
+            }));
+        }
+    };
+
+    const handleAmenitiesChange = (e) => {
+        const { checked, value } = e.target;
+        setPropertyData(prev => ({
+            ...prev,
+            amenities: checked 
+                ? [...prev.amenities, value]
+                : prev.amenities.filter(amenity => amenity !== value)
+        }));
     };
 
     const handleMediaChange = (e) => {
-        setPropertyData({ ...propertyData, media: Array.from(e.target.files) });
+        const files = Array.from(e.target.files);
+        setPropertyData(prev => ({
+            ...prev,
+            media: [...prev.media, ...files]
+        }));
     };
 
     const handleSubmit = (e) => {
         e.preventDefault();
         onSubmit(propertyData);
-
-        // Clear form
-        setPropertyData({
-            propertyId: '',
-            title: '',
-            type: 'Residential',
-            category: 'For Sale',
-            price: '',
-            location: '',
-            status: 'Available',
-            floorArea: '',
-            bedrooms: '',
-            bathrooms: '',
-            yearBuilt: '',
-            amenities: '',
-            media: [],
-            description: '',
-        });
-
-        alert('Property added successfully!');
     };
 
     return (
-        <form onSubmit={handleSubmit} className="bg-white p-6 rounded-lg shadow-md">
-            <h2 className="text-2xl font-bold mb-4">Add New Property</h2>
-
-            {visibleFields.title && (
-                <div className="mb-4">
-                    <label className="block text-gray-700">Title/Name</label>
+        <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Title</label>
                     <input
                         type="text"
                         name="title"
                         value={propertyData.title}
                         onChange={handleChange}
-                        className="w-full p-2 border rounded"
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                         required
                     />
                 </div>
-            )}
 
-            {visibleFields.type && (
-                <div className="mb-4">
-                    <label className="block text-gray-700">Type</label>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Type</label>
                     <select
                         name="type"
                         value={propertyData.type}
                         onChange={handleChange}
-                        className="w-full p-2 border rounded"
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                        required
                     >
-                        <option value="Residential">Residential</option>
-                        <option value="Commercial">Commercial</option>
+                        <option value="apartment">Apartment</option>
+                        <option value="house">House</option>
+                        <option value="villa">Villa</option>
+                        <option value="office">Office</option>
+                        <option value="land">Land</option>
+                        <option value="commercial">Commercial</option>
                     </select>
                 </div>
-            )}
 
-            {visibleFields.category && (
-                <div className="mb-4">
-                    <label className="block text-gray-700">Category</label>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Category</label>
                     <select
                         name="category"
                         value={propertyData.category}
                         onChange={handleChange}
-                        className="w-full p-2 border rounded"
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                        required
                     >
-                        <option value="For Sale">For Sale</option>
-                        <option value="For Rent">For Rent</option>
-                        <option value="Both">Both</option>
+                        <option value="sale">For Sale</option>
+                        <option value="rent">For Rent</option>
                     </select>
                 </div>
-            )}
 
-            {visibleFields.price && (
-                <div className="mb-4">
-                    <label className="block text-gray-700">Price</label>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Price</label>
                     <input
                         type="number"
                         name="price"
                         value={propertyData.price}
                         onChange={handleChange}
-                        className="w-full p-2 border rounded"
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                         required
                     />
                 </div>
-            )}
 
-            {visibleFields.location && (
-                <div className="mb-4">
-                    <label className="block text-gray-700">Location</label>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Location</label>
                     <input
                         type="text"
                         name="location"
                         value={propertyData.location}
                         onChange={handleChange}
-                        className="w-full p-2 border rounded"
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                         required
                     />
                 </div>
-            )}
 
-            {visibleFields.status && (
-                <div className="mb-4">
-                    <label className="block text-gray-700">Status</label>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Status</label>
                     <select
                         name="status"
                         value={propertyData.status}
                         onChange={handleChange}
-                        className="w-full p-2 border rounded"
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                        required
                     >
-                        <option value="Available">Available</option>
-                        <option value="Sold">Sold</option>
-                        <option value="Rented">Rented</option>
+                        <option value="available">Available</option>
+                        <option value="pending">Pending</option>
+                        <option value="sold">Sold</option>
+                        <option value="rented">Rented</option>
                     </select>
                 </div>
-            )}
 
-            {visibleFields.floorArea && (
-                <div className="mb-4">
-                    <label className="block text-gray-700">Floor Area (m² or sq. ft)</label>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Floor Area (m²)</label>
                     <input
                         type="number"
                         name="floorArea"
                         value={propertyData.floorArea}
                         onChange={handleChange}
-                        className="w-full p-2 border rounded"
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                     />
                 </div>
-            )}
 
-            {visibleFields.bedrooms && (
-                <div className="mb-4">
-                    <label className="block text-gray-700">Number of Bedrooms</label>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Bedrooms</label>
                     <input
                         type="number"
                         name="bedrooms"
                         value={propertyData.bedrooms}
                         onChange={handleChange}
-                        className="w-full p-2 border rounded"
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                     />
                 </div>
-            )}
 
-            {visibleFields.bathrooms && (
-                <div className="mb-4">
-                    <label className="block text-gray-700">Number of Bathrooms</label>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Bathrooms</label>
                     <input
                         type="number"
                         name="bathrooms"
                         value={propertyData.bathrooms}
                         onChange={handleChange}
-                        className="w-full p-2 border rounded"
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                     />
                 </div>
-            )}
 
-            {visibleFields.yearBuilt && (
-                <div className="mb-4">
-                    <label className="block text-gray-700">Year Built or Renovated</label>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Year Built</label>
                     <input
                         type="number"
                         name="yearBuilt"
                         value={propertyData.yearBuilt}
                         onChange={handleChange}
-                        className="w-full p-2 border rounded"
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                     />
+                </div>
+            </div>
+
+            <div>
+                <label className="block text-sm font-medium text-gray-700">Amenities</label>
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                    {['Parking', 'Pool', 'Garden', 'Security', 'Gym', 'Elevator'].map(amenity => (
+                        <label key={amenity} className="inline-flex items-center">
+                            <input
+                                type="checkbox"
+                                value={amenity.toLowerCase()}
+                                checked={propertyData.amenities.includes(amenity.toLowerCase())}
+                                onChange={handleAmenitiesChange}
+                                className="rounded border-gray-300 text-primary-600 shadow-sm focus:border-primary-500 focus:ring focus:ring-primary-500 focus:ring-opacity-50"
+                            />
+                            <span className="ml-2">{amenity}</span>
+                        </label>
+                    ))}
+                </div>
+            </div>
+
+            <div>
+                <label className="block text-sm font-medium text-gray-700">Description</label>
+                <textarea
+                    name="description"
+                    value={propertyData.description}
+                    onChange={handleChange}
+                    rows={4}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                />
+            </div>
+
+            {withCommission && (
+                <div className="space-y-4">
+                    <h4 className="text-lg font-medium text-gray-900">Commission Details</h4>
+                    <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Commission Type</label>
+                            <select
+                                name="commission.type"
+                                value={propertyData.commission.type}
+                                onChange={handleChange}
+                                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                            >
+                                <option value="PERCENTAGE">Percentage</option>
+                                <option value="FIXED">Fixed Amount</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">
+                                {propertyData.commission.type === 'PERCENTAGE' ? 'Percentage (%)' : 'Amount'}
+                            </label>
+                            <input
+                                type="number"
+                                name="commission.value"
+                                value={propertyData.commission.value}
+                                onChange={handleChange}
+                                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                            />
+                        </div>
+                    </div>
                 </div>
             )}
 
-            {visibleFields.amenities && (
-                <div className="mb-4">
-                    <label className="block text-gray-700">Amenities</label>
-                    <input
-                        type="text"
-                        name="amenities"
-                        value={propertyData.amenities}
-                        onChange={handleChange}
-                        className="w-full p-2 border rounded"
-                        placeholder="E.g., Pool, Gym, Parking"
-                    />
-                </div>
-            )}
+            <div>
+                <label className="block text-sm font-medium text-gray-700">Property Images</label>
+                <input
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    onChange={handleMediaChange}
+                    className="mt-1 block w-full"
+                />
+            </div>
 
-            {visibleFields.media && (
-                <div className="mb-4">
-                    <label className="block text-gray-700">Media (Images/Videos)</label>
-                    <input
-                        type="file"
-                        name="media"
-                        accept="image/*,video/*"
-                        multiple
-                        onChange={handleMediaChange}
-                        className="w-full p-2 border rounded"
-                    />
-                </div>
-            )}
-
-            {visibleFields.description && (
-                <div className="mb-4">
-                    <label className="block text-gray-700">Description</label>
-                    <textarea
-                        name="description"
-                        value={propertyData.description}
-                        onChange={handleChange}
-                        className="w-full p-2 border rounded"
-                        rows="4"
-                    />
-                </div>
-            )}
-
-            <button type="submit" className="bg-blue-500 text-white p-2 rounded">
-                Submit Property
-            </button>
+            <div className="flex justify-end">
+                <button
+                    type="submit"
+                    className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+                >
+                    Save Property
+                </button>
+            </div>
         </form>
     );
 };
