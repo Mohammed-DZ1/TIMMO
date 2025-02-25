@@ -82,7 +82,7 @@ const filterDataByType = (data, filter) => {
     };
 };
 
-exports.handler = async (event) => {
+const getDashboardStats = async (event, context) => {
     try {
         const { startDate, endDate, filter } = event.queryStringParameters || {};
         
@@ -98,22 +98,66 @@ exports.handler = async (event) => {
             filteredData = filterDataByType(filteredData, filter);
         }
 
+        const headers = {
+            'Access-Control-Allow-Origin': 'https://timmodashboard.netlify.app',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+            'Access-Control-Allow-Credentials': 'true'
+        };
+
         return {
             statusCode: 200,
-            headers: {
-                'Access-Control-Allow-Origin': '*',
-                'Content-Type': 'application/json'
-            },
+            headers,
             body: JSON.stringify(filteredData),
         };
     } catch (error) {
         return {
             statusCode: 500,
             headers: {
-                'Access-Control-Allow-Origin': '*',
-                'Content-Type': 'application/json'
+                'Access-Control-Allow-Origin': 'https://timmodashboard.netlify.app',
+                'Access-Control-Allow-Credentials': 'true'
             },
             body: JSON.stringify({ message: "Error fetching dashboard data", error: error.message }),
+        };
+    }
+};
+
+const { verifyToken } = require('./utils/auth');
+
+exports.handler = async (event, context) => {
+    const headers = {
+        'Access-Control-Allow-Origin': 'https://timmodashboard.netlify.app',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Credentials': 'true'
+    };
+
+    // Handle preflight requests
+    if (event.httpMethod === 'OPTIONS') {
+        return {
+            statusCode: 200,
+            headers
+        };
+    }
+
+    try {
+        // Verify the user's token
+        const user = await verifyToken(event);
+        if (!user) {
+            return {
+                statusCode: 401,
+                headers,
+                body: JSON.stringify({ message: 'Unauthorized' })
+            };
+        }
+
+        return await getDashboardStats(event, context);
+    } catch (error) {
+        console.error('Dashboard stats error:', error);
+        return {
+            statusCode: 500,
+            headers,
+            body: JSON.stringify({ message: 'Internal server error' })
         };
     }
 };
