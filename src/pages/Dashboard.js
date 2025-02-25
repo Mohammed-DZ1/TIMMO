@@ -7,12 +7,12 @@ import LineChart from '../components/LineChart';
 import PieChart from '../components/PieChart';
 import DateRangePicker from '../components/DateRangePicker';
 import FilterDropdown from '../components/FilterDropdown';
-import { auth } from '../hooks/useAuth';
+import useAuth from '../hooks/useAuth';
 import { useSettings } from '../hooks/useSettings';
 
 const Dashboard = () => {
     const { t } = useTranslation();
-    const { user } = auth;
+    const { user } = useAuth();
     const { settings } = useSettings();
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -207,3 +207,4 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
+                             
