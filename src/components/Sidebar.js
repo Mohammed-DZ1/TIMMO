@@ -1,14 +1,44 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { FaSignOutAlt } from 'react-icons/fa';
-import { useTranslation } from 'react-i18next';  // Import translation hook
-import Logo from '../images/logo1.png';  // Adjust path if needed
-import * as icons from 'react-icons/fa';  // Dynamically load icons
+import { useTranslation } from 'react-i18next';
+import useAuth from '../hooks/useAuth';
+import Logo from '../images/logo1.png';
+import * as icons from 'react-icons/fa';
 
-const Sidebar = ({ userRole }) => {
-    const { t } = useTranslation(); // Hook for translations
+const defaultLinks = [
+    {
+        path: '/',
+        label: 'dashboard',
+        icon: 'FaHome'
+    },
+    {
+        path: '/properties',
+        label: 'properties',
+        icon: 'FaBuilding'
+    },
+    {
+        path: '/clients',
+        label: 'clients',
+        icon: 'FaUsers'
+    },
+    {
+        path: '/agents',
+        label: 'agents',
+        icon: 'FaUserTie'
+    },
+    {
+        path: '/settings',
+        label: 'settings',
+        icon: 'FaCog'
+    }
+];
+
+const Sidebar = () => {
+    const { t } = useTranslation();
+    const { logout, user } = useAuth();
     const [isHovered, setIsHovered] = useState(false);
-    const [links, setLinks] = useState([]);  // Initialize with an empty array
+    const [links, setLinks] = useState(defaultLinks);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -18,78 +48,95 @@ const Sidebar = ({ userRole }) => {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
+                        'Accept': 'application/json'
                     },
-                    body: JSON.stringify({ role: userRole }),  // Send the user role to the backend
+                    credentials: 'include',
+                    body: JSON.stringify({ role: user?.role })
                 });
+
+                if (!response.ok) {
+                    throw new Error('Failed to fetch sidebar links');
+                }
+
                 const data = await response.json();
-                
-                if (data && data.links) {
+                if (data && data.links && Array.isArray(data.links)) {
                     setLinks(data.links);
                 } else {
-                    console.warn('No links found in response:', data);
-                    setLinks([]);  // Default to an empty array if no links are returned
+                    console.warn('Using default links - received:', data);
+                    setLinks(defaultLinks);
                 }
             } catch (error) {
                 console.error('Error fetching sidebar links:', error);
-                setLinks([]);  // Set empty array on fetch failure
+                setLinks(defaultLinks);
             }
         };
 
         fetchLinks();
-    }, [userRole]);
+    }, [user?.role]);
 
-    const handleLogout = () => {
-        localStorage.clear();  // Clear session data if applicable
-        alert(t('logoutMessage')); // Use translation
-        navigate('/login');  // Redirect to the login page
+    const handleLogout = async () => {
+        try {
+            await logout();
+            navigate('/login');
+        } catch (error) {
+            console.error('Logout failed:', error);
+        }
     };
 
     return (
         <div
-            className={`bg-primary text-white h-screen transition-all duration-300 ${
-                isHovered ? 'w-48' : 'w-16'
-            } flex flex-col items-center justify-between`}
+            className={`bg-secondary-900 text-white h-screen transition-all duration-300 ${
+                isHovered ? 'w-64' : 'w-20'
+            } flex flex-col items-center`}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
         >
             {/* Logo Section */}
-            <div className="mt-4">
-                <img src={Logo} alt="Logo" className="w-10 h-10" />
+            <div className="mt-6 mb-8">
+                <img src={Logo} alt="TIMMO" className="w-12 h-12" />
             </div>
 
             {/* Navigation Links */}
-            <ul className="space-y-6 w-full">
-                {links.length > 0 ? (
-                    links.map((link) => {
+            <nav className="flex-1 w-full">
+                <ul className="space-y-2 px-2">
+                    {links.map((link) => {
                         const IconComponent = icons[link.icon];
                         return (
-                            <li key={link.path} className="w-full">
+                            <li key={link.path}>
                                 <NavLink
                                     to={link.path}
                                     className={({ isActive }) =>
-                                        `flex items-center space-x-4 p-2 rounded-md transition-colors duration-300 ${
-                                            isActive ? 'bg-accent text-black' : 'text-gray-300 hover:bg-gray-700'
+                                        `flex items-center px-4 py-3 rounded-lg transition-colors duration-200 ${
+                                            isActive
+                                                ? 'bg-primary-500 text-white'
+                                                : 'text-gray-300 hover:bg-secondary-800 hover:text-white'
                                         }`
                                     }
                                 >
-                                    <div className="ml-2">{IconComponent && <IconComponent size={25} />}</div>
-                                    {isHovered && <span className="text-sm font-medium">{t(link.label)}</span>}
+                                    {IconComponent && <IconComponent className="w-5 h-5" />}
+                                    {isHovered && (
+                                        <span className="ml-4 text-sm font-medium">
+                                            {t(link.label)}
+                                        </span>
+                                    )}
                                 </NavLink>
                             </li>
                         );
-                    })
-                ) : (
-                    <li className="text-gray-300">{t('noLinks')}</li>
-                )}
-            </ul>
+                    })}
+                </ul>
+            </nav>
 
             {/* Logout Button */}
             <button
                 onClick={handleLogout}
-                className="mb-6 flex items-center space-x-2 p-2 rounded-md transition-colors duration-300 text-gray-300 hover:text-white hover:bg-red-600 w-full"
+                className="w-full px-4 py-3 mb-6 flex items-center text-gray-300 hover:text-white hover:bg-red-600 transition-colors duration-200"
             >
-                <FaSignOutAlt size={25} className="ml-2" />
-                {isHovered && <span className="text-sm font-medium">{t('logout')}</span>}
+                <FaSignOutAlt className="w-5 h-5" />
+                {isHovered && (
+                    <span className="ml-4 text-sm font-medium">
+                        {t('logout')}
+                    </span>
+                )}
             </button>
         </div>
     );
