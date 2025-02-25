@@ -8,7 +8,6 @@ import LineChart from '../components/LineChart';
 import PieChart from '../components/PieChart';
 import DateRangePicker from '../components/DateRangePicker';
 import FilterDropdown from '../components/FilterDropdown';
-import useAuth from '../hooks/useAuth';
 import { useSettings } from '../hooks/useSettings';
 
 const Dashboard = () => {
