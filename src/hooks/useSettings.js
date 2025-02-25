@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
-import { useAuth } from './useAuth';
+import { auth } from './useAuth';
 
-const useSettings = () => {
-    const { user, loading: authLoading } = useAuth();
+export const useSettings = () => {
+    const { user, loading: authLoading } = auth;
     const [settings, setSettings] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
