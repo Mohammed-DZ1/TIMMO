@@ -18,6 +18,36 @@ const linksDatabase = {
     ]
 };
 
+const getSidebarLinks = () => {
+    return [
+        {
+            path: '/',
+            label: 'dashboard',
+            icon: 'FaHome'
+        },
+        {
+            path: '/properties',
+            label: 'properties',
+            icon: 'FaBuilding'
+        },
+        {
+            path: '/clients',
+            label: 'clients',
+            icon: 'FaUsers'
+        },
+        {
+            path: '/agents',
+            label: 'agents',
+            icon: 'FaUserTie'
+        },
+        {
+            path: '/settings',
+            label: 'settings',
+            icon: 'FaCog'
+        }
+    ];
+};
+
 exports.handler = async (event) => {
     console.log('DEBUG: Incoming Request:', event);
 
@@ -81,7 +111,7 @@ exports.handler = async (event) => {
         return {
             statusCode: 200,
             headers: { 'Access-Control-Allow-Origin': '*' },
-            body: JSON.stringify({ links: linksDatabase[role] || [] }) // Ensure response is always an array
+            body: JSON.stringify({ links: linksDatabase[role] || getSidebarLinks() }) // Ensure response is always an array
         };
 
     } catch (error) {
