@@ -1,72 +1,78 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import { useNavigate, Navigate } from 'react-router-dom';
+import useAuth from '../hooks/useAuth';
+import { useTranslation } from 'react-i18next';
 
 const Login = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [errorMessage, setErrorMessage] = useState('');
     const navigate = useNavigate();
+    const { login, user } = useAuth();
+    const { t } = useTranslation();
+
+    // If already logged in, redirect to dashboard
+    if (user) {
+        return <Navigate to="/" replace />;
+    }
 
     const handleLogin = async (e) => {
         e.preventDefault();
+        setErrorMessage('');
 
         try {
-            const response = await axios.post('/.netlify/functions/Login',
-                { email, password },
-                {
-                    withCredentials: true,
-                    headers: { 'Content-Type': 'application/json' }
-                }
-            );
-
-            if (response.status === 200) {
-                const { token, role } = response.data;
-
-
-                sessionStorage.setItem('authToken', token);
-                sessionStorage.setItem('userRole', role);
-                sessionStorage.setItem('tokenExpiry', Date.now() + 24 * 60 * 60 * 1000)
-
-                alert('Login successful!');
-                navigate('/');  
-            }
+            await login(email, password);
+            navigate('/', { replace: true });
         } catch (error) {
-            console.error('Login error:', error.response?.data?.message || error.message);
-            setErrorMessage(error.response?.data?.message || 'Invalid email or password. Please try again.');
+            console.error('Login error:', error);
+            setErrorMessage(t('login.error') || 'Invalid email or password');
         }
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-100">
-            <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-sm">
-                <h2 className="text-2xl font-bold mb-6 text-center">Login</h2>
+        <div className="min-h-screen flex items-center justify-center bg-secondary-500">
+            <div className="bg-white p-8 rounded-2xl shadow-gold-lg w-full max-w-md">
+                <div className="text-center mb-8">
+                    <h2 className="text-3xl font-bold text-primary-500">{t('login.title')}</h2>
+                    <p className="text-secondary-400 mt-2">{t('login.subtitle')}</p>
+                </div>
 
-                {errorMessage && <p className="text-red-500 mb-4">{errorMessage}</p>}
+                {errorMessage && (
+                    <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 text-red-700">
+                        <p>{errorMessage}</p>
+                    </div>
+                )}
 
-                <form onSubmit={handleLogin}>
-                    <div className="mb-4">
-                        <label className="block text-gray-700">Email</label>
+                <form onSubmit={handleLogin} className="space-y-6">
+                    <div>
+                        <label className="block text-sm font-medium text-secondary-500 mb-2">
+                            {t('login.email')}
+                        </label>
                         <input
                             type="email"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
-                            className="w-full p-2 border rounded"
+                            className="w-full p-3 border border-secondary-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                             required
                         />
                     </div>
-                    <div className="mb-4">
-                        <label className="block text-gray-700">Password</label>
+                    <div>
+                        <label className="block text-sm font-medium text-secondary-500 mb-2">
+                            {t('login.password')}
+                        </label>
                         <input
                             type="password"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            className="w-full p-2 border rounded"
+                            className="w-full p-3 border border-secondary-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                             required
                         />
                     </div>
-                    <button type="submit" className="bg-blue-500 text-white w-full p-2 rounded">
-                        Login
+                    <button
+                        type="submit"
+                        className="w-full py-3 px-4 bg-gradient-to-r from-primary-500 to-primary-600 text-white font-medium rounded-xl hover:to-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transform transition-all duration-200 hover:scale-[1.02]"
+                    >
+                        {t('login.submit')}
                     </button>
                 </form>
             </div>
