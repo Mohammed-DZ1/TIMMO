@@ -51,7 +51,7 @@ export const AuthProvider = ({ children }) => {
         try {
             setState(prev => ({ ...prev, loading: true, error: null }));
             const response = await axios.post(
-                `${API_BASE_URL}/.netlify/functions/login`,
+                `${API_BASE_URL}/.netlify/functions/Login`,
                 { email, password },
                 {
                     withCredentials: true,
