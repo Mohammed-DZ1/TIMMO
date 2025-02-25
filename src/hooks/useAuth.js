@@ -1,49 +1,47 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
 
-const AuthContext = createContext(null);
+const AuthContext = createContext();
 const API_BASE_URL = 'https://timmodashboard.netlify.app';
 
-const initialState = {
-    user: null,
-    loading: true,
-    error: null
-};
-
 export const AuthProvider = ({ children }) => {
-    const [state, setState] = useState(initialState);
+    const [state, setState] = useState({
+        user: null,
+        loading: true,
+        error: null
+    });
 
-    useEffect(() => {
-        const checkAuth = async () => {
-            try {
-                setState(prev => ({ ...prev, loading: true, error: null }));
-                const response = await axios.get(`${API_BASE_URL}/.netlify/functions/checkAuth`, {
-                    withCredentials: true
-                });
-                
-                if (response.data && response.data.user) {
-                    setState(prev => ({
-                        ...prev,
-                        user: {
-                            email: response.data.user.email,
-                            role: response.data.user.role || 'user'
-                        },
-                        loading: false
-                    }));
-                } else {
-                    setState(prev => ({ ...prev, user: null, loading: false }));
-                }
-            } catch (err) {
-                console.error('Auth check failed:', err);
+    const checkAuth = async () => {
+        try {
+            setState(prev => ({ ...prev, loading: true, error: null }));
+            const response = await axios.get(`${API_BASE_URL}/.netlify/functions/checkAuth`, {
+                withCredentials: true
+            });
+            
+            if (response.data?.user) {
                 setState(prev => ({
                     ...prev,
-                    user: null,
-                    loading: false,
-                    error: err.message
+                    user: {
+                        email: response.data.user.email,
+                        role: response.data.user.role || 'user'
+                    },
+                    loading: false
                 }));
+            } else {
+                setState(prev => ({ ...prev, user: null, loading: false }));
             }
-        };
+        } catch (err) {
+            console.error('Auth check failed:', err);
+            setState(prev => ({
+                ...prev,
+                user: null,
+                loading: false,
+                error: err.message
+            }));
+        }
+    };
 
+    useEffect(() => {
         checkAuth();
     }, []);
 
@@ -51,17 +49,15 @@ export const AuthProvider = ({ children }) => {
         try {
             setState(prev => ({ ...prev, loading: true, error: null }));
             const response = await axios.post(
-                `${API_BASE_URL}/.netlify/functions/Login`,
+                `${API_BASE_URL}/.netlify/functions/login`,
                 { email, password },
                 {
                     withCredentials: true,
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
+                    headers: { 'Content-Type': 'application/json' }
                 }
             );
 
-            if (response.data && response.data.user) {
+            if (response.data?.user) {
                 setState(prev => ({
                     ...prev,
                     user: {
@@ -74,11 +70,10 @@ export const AuthProvider = ({ children }) => {
             }
             throw new Error('Invalid response format');
         } catch (err) {
-            const errorMessage = err.response?.data?.message || err.message;
             setState(prev => ({
                 ...prev,
                 loading: false,
-                error: errorMessage
+                error: err.response?.data?.message || err.message
             }));
             throw err;
         }
@@ -92,40 +87,33 @@ export const AuthProvider = ({ children }) => {
                 {},
                 {
                     withCredentials: true,
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
+                    headers: { 'Content-Type': 'application/json' }
                 }
             );
             setState(prev => ({ ...prev, user: null, loading: false }));
         } catch (err) {
-            const errorMessage = err.response?.data?.message || err.message;
             setState(prev => ({
                 ...prev,
                 loading: false,
-                error: errorMessage
+                error: err.response?.data?.message || err.message
             }));
             throw err;
         }
     };
 
-    const value = {
-        user: state.user,
-        loading: state.loading,
-        error: state.error,
-        login,
-        logout
-    };
-
-    if (state.loading) {
-        return (
-            <div className="flex items-center justify-center min-h-screen bg-secondary-500">
-                <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-primary-500"></div>
-            </div>
-        );
-    }
-
-    return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+    return (
+        <AuthContext.Provider
+            value={{
+                user: state.user,
+                loading: state.loading,
+                error: state.error,
+                login,
+                logout
+            }}
+        >
+            {children}
+        </AuthContext.Provider>
+    );
 };
 
 export const useAuth = () => {
