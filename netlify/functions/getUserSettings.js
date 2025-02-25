@@ -1,6 +1,45 @@
 const jwt = require('jsonwebtoken');
 const { MongoClient } = require('mongodb');
 
+const defaultSettings = {
+    theme: 'light',
+    language: 'en',
+    notifications: {
+        email: true,
+        push: false
+    },
+    dashboard: {
+        showKPIs: true,
+        showCharts: true,
+        refreshInterval: 300 // 5 minutes
+    }
+};
+
+const getUserSettings = async (email) => {
+    let client;
+    try {
+        // Connect to MongoDB
+        client = new MongoClient(process.env.MONGODB_URI);
+        await client.connect();
+        const db = client.db('timmo');
+
+        // Get user settings from database
+        const userSettings = await db.collection('user_settings').findOne(
+            { email },
+            { projection: { _id: 0 } }
+        );
+
+        return userSettings || defaultSettings;
+    } catch (error) {
+        console.error('GetUserSettings error:', error);
+        return defaultSettings;
+    } finally {
+        if (client) {
+            await client.close();
+        }
+    }
+};
+
 exports.handler = async (event) => {
     // Handle CORS preflight
     if (event.httpMethod === 'OPTIONS') {
@@ -32,21 +71,12 @@ exports.handler = async (event) => {
         };
     }
 
-    let client;
     try {
         // Verify token
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-        // Connect to MongoDB
-        client = new MongoClient(process.env.MONGODB_URI);
-        await client.connect();
-        const db = client.db('timmo');
-
-        // Get user settings from database
-        const userSettings = await db.collection('user_settings').findOne(
-            { email: decoded.email },
-            { projection: { _id: 0 } }
-        );
+        // Get user settings
+        const userSettings = await getUserSettings(decoded.email);
 
         return {
             statusCode: 200,
@@ -55,13 +85,7 @@ exports.handler = async (event) => {
                 'Access-Control-Allow-Credentials': 'true',
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify(userSettings || {
-                email: decoded.email,
-                theme: 'light',
-                language: 'fr',
-                notifications: true,
-                dashboardLayout: 'default'
-            })
+            body: JSON.stringify(userSettings)
         };
     } catch (error) {
         console.error('GetUserSettings error:', error);
@@ -77,9 +101,5 @@ exports.handler = async (event) => {
                     : 'Internal server error' 
             })
         };
-    } finally {
-        if (client) {
-            await client.close();
-        }
     }
 };
