@@ -13,16 +13,15 @@ const TimeRangeSelector = ({ value, onChange }) => {
     ];
 
     return (
-        <div className="inline-flex bg-white/5 backdrop-blur-sm rounded-xl p-1 shadow-lg">
-            {options.map((option) => (
+        <div className="flex gap-2">
+            {options.map(option => (
                 <Button3D
                     key={option.value}
-                    variant={value === option.value ? 'primary' : 'secondary'}
-                    size="sm"
-                    icon={option.icon}
                     onClick={() => onChange(option.value)}
-                    className="mx-0.5"
+                    variant={value === option.value ? 'primary' : 'secondary'}
+                    className="flex items-center gap-2"
                 >
+                    <option.icon size={16} />
                     {option.label}
                 </Button3D>
             ))}
