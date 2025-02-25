@@ -2,52 +2,53 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { TrendingUp, TrendingDown } from 'react-feather';
 
-const KpiCard = ({ title, value, trend, icon: Icon, color = 'blue' }) => {
+const KpiCard = ({ title, value, trend, icon: Icon, color = 'gold', prefix = '', suffix = '' }) => {
     const { t } = useTranslation();
     
     const colorVariants = {
-        blue: {
-            background: 'from-blue-500 to-blue-600',
-            hover: 'hover:to-blue-700',
-            iconBg: 'bg-blue-400/30',
-            trendUp: 'text-blue-300',
-            trendDown: 'text-blue-300',
-            shadow: 'shadow-blue-500/20'
+        gold: {
+            background: 'from-primary-500 to-primary-600',
+            hover: 'hover:to-primary-700',
+            iconBg: 'bg-primary-400/30',
+            trendUp: 'text-primary-300',
+            trendDown: 'text-primary-300',
+            shadow: 'shadow-gold'
         },
-        green: {
-            background: 'from-emerald-500 to-emerald-600',
-            hover: 'hover:to-emerald-700',
-            iconBg: 'bg-emerald-400/30',
-            trendUp: 'text-emerald-300',
-            trendDown: 'text-emerald-300',
-            shadow: 'shadow-emerald-500/20'
+        charcoal: {
+            background: 'from-secondary-500 to-secondary-600',
+            hover: 'hover:to-secondary-700',
+            iconBg: 'bg-secondary-400/30',
+            trendUp: 'text-secondary-300',
+            trendDown: 'text-secondary-300',
+            shadow: 'shadow-lg'
         },
-        purple: {
-            background: 'from-purple-500 to-purple-600',
-            hover: 'hover:to-purple-700',
-            iconBg: 'bg-purple-400/30',
-            trendUp: 'text-purple-300',
-            trendDown: 'text-purple-300',
-            shadow: 'shadow-purple-500/20'
+        success: {
+            background: 'from-status-success to-status-success/90',
+            hover: 'hover:to-status-success/80',
+            iconBg: 'bg-status-success/30',
+            trendUp: 'text-white/80',
+            trendDown: 'text-white/80',
+            shadow: 'shadow-lg'
         },
-        orange: {
-            background: 'from-orange-500 to-orange-600',
-            hover: 'hover:to-orange-700',
-            iconBg: 'bg-orange-400/30',
-            trendUp: 'text-orange-300',
-            trendDown: 'text-orange-300',
-            shadow: 'shadow-orange-500/20'
+        warning: {
+            background: 'from-status-warning to-status-warning/90',
+            hover: 'hover:to-status-warning/80',
+            iconBg: 'bg-status-warning/30',
+            trendUp: 'text-white/80',
+            trendDown: 'text-white/80',
+            shadow: 'shadow-lg'
         }
     };
 
-    const colors = colorVariants[color];
+    // Default to gold if color variant doesn't exist
+    const colors = colorVariants[color] || colorVariants.gold;
 
     return (
         <div className={`
             relative group cursor-pointer
             rounded-2xl overflow-hidden
             bg-gradient-to-br ${colors.background}
-            shadow-lg ${colors.shadow}
+            ${colors.shadow}
             transition-all duration-300 ease-out
             hover:shadow-xl hover:scale-[1.02] ${colors.hover}
             before:content-['']
@@ -64,9 +65,9 @@ const KpiCard = ({ title, value, trend, icon: Icon, color = 'blue' }) => {
             <div className="relative p-6">
                 <div className="flex items-center justify-between mb-4">
                     <div className={`p-3 rounded-xl ${colors.iconBg}`}>
-                        <Icon className="w-6 h-6 text-white" />
+                        {Icon && <Icon className="w-6 h-6 text-white" />}
                     </div>
-                    {trend && (
+                    {trend !== undefined && (
                         <div className="flex items-center space-x-1">
                             {trend > 0 ? (
                                 <TrendingUp className={`w-5 h-5 ${colors.trendUp}`} />
@@ -85,10 +86,12 @@ const KpiCard = ({ title, value, trend, icon: Icon, color = 'blue' }) => {
                 </h3>
                 
                 <div className="text-2xl font-bold text-white">
+                    {prefix}
                     {typeof value === 'number' 
                         ? new Intl.NumberFormat('fr-DZ').format(value)
                         : value
                     }
+                    {suffix}
                 </div>
             </div>
         </div>
