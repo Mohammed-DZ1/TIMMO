@@ -20,21 +20,21 @@ const MainLayout = () => {
     }
 
     return (
-        <div className="flex min-h-screen bg-gray-100">
+        <div className="flex h-screen bg-gray-100">
             <Sidebar />
             <div className="flex-1 flex flex-col">
-                <header className="bg-white shadow">
-                    <div className="px-4 py-6">
+                <header className="bg-white shadow-sm">
+                    <div className="px-4 py-4">
                         <LanguageSelector />
                     </div>
                 </header>
-                <main className="flex-1 p-6">
+                <main className="flex-1 p-6 overflow-auto">
                     <Routes>
-                        <Route path="/" element={<Dashboard />} />
-                        <Route path="/properties" element={<Properties />} />
-                        <Route path="/clients" element={<Clients />} />
-                        <Route path="/agents" element={<Agents />} />
-                        <Route path="/settings" element={<Settings />} />
+                        <Route index element={<Dashboard />} />
+                        <Route path="properties" element={<Properties />} />
+                        <Route path="clients" element={<Clients />} />
+                        <Route path="agents" element={<Agents />} />
+                        <Route path="settings" element={<Settings />} />
                     </Routes>
                 </main>
             </div>
@@ -44,15 +44,11 @@ const MainLayout = () => {
 
 const App = () => {
     const { loading, user } = useAuth();
-    const { t } = useTranslation();
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center min-h-screen bg-gray-100">
-                <div className="text-center">
-                    <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-primary-600 mx-auto"></div>
-                    <p className="mt-4 text-gray-600">{t('Loading...')}</p>
-                </div>
+            <div className="flex items-center justify-center min-h-screen bg-secondary-500">
+                <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-primary-500"></div>
             </div>
         );
     }
