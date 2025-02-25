@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
@@ -9,72 +9,47 @@ import Agents from './pages/Agents';
 import Settings from './pages/Settings';
 import Login from './pages/Login';
 import PrivateRoute from './components/PrivateRoute';
-import LanguageSelector from './components/LanguageSelector'; // Import Language Selector
-import './i18n'; // Import i18n configuration
+import LanguageSelector from './components/LanguageSelector';
+import './i18n';
 
 function App() {
-    const [agents, setAgents] = useState([]);  // Centralized agent state
-    const [userRole, setUserRole] = useState(localStorage.getItem('userRole') || 'Guest');
     const { t } = useTranslation();
-
-    useEffect(() => {
-        // Update userRole if it changes in localStorage
-        const handleStorageChange = () => {
-            setUserRole(localStorage.getItem('userRole') || 'Guest');
-        };
-        window.addEventListener('storage', handleStorageChange);
-
-        return () => {
-            window.removeEventListener('storage', handleStorageChange);
-        };
-    }, []);
-
-    const addAgent = (newAgent) => {
-        setAgents((prevAgents) => [...prevAgents, newAgent]);
-    };
-
-    // Update userRole if login/logout happens within the app
-    const updateUserRole = (role) => {
-        localStorage.setItem('userRole', role);
-        setUserRole(role);
-    };
 
     return (
         <Router>
             <div className="app-container">
-                <LanguageSelector /> {/* Language Selector at the top */}
+                <LanguageSelector />
                 <Routes>
-                    {/* Public Route */}
-                    <Route path="/login" element={<Login updateUserRole={updateUserRole} />} />
-
-                    {/* Protected Routes */}
-                    <Route
-                        path="/*"
-                        element={
-                            <PrivateRoute>
-                                <div className="flex h-screen">
-                                    {/* Pass userRole to Sidebar */}
-                                    <Sidebar userRole={userRole} />
-                                    <div className="flex-1 p-8 md:p-6 bg-gray-100 overflow-auto">
-                                        <Routes>
-                                            <Route path="/" element={<Dashboard />} />
-                                            <Route path="/properties" element={<Properties />} />
-                                            <Route path="/clients" element={<Clients />} />
-                                            <Route
-                                                path="/agents"
-                                                element={<Agents agents={agents} addAgent={addAgent} />}
-                                            />
-                                            {/* Pass userRole to Settings */}
-                                            <Route path="/settings" element={<Settings userRole={userRole} />} />
-                                        </Routes>
-                                    </div>
-                                </div>
-                            </PrivateRoute>
-                        }
-                    />
+                    <Route path="/login" element={<Login />} />
+                    <Route path="/" element={<PrivateRoute><Layout /></PrivateRoute>}>
+                        <Route index element={<Dashboard />} />
+                        <Route path="properties" element={<Properties />} />
+                        <Route path="clients" element={<Clients />} />
+                        <Route path="agents" element={<Agents />} />
+                        <Route path="settings" element={<Settings />} />
+                    </Route>
+                    <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
             </div>
         </Router>
+    );
+}
+
+// Separate Layout component for better organization
+function Layout() {
+    return (
+        <div className="flex h-screen">
+            <Sidebar />
+            <div className="flex-1 p-8 md:p-6 bg-gray-100 overflow-auto">
+                <Routes>
+                    <Route path="/" element={<Dashboard />} />
+                    <Route path="/properties" element={<Properties />} />
+                    <Route path="/clients" element={<Clients />} />
+                    <Route path="/agents" element={<Agents />} />
+                    <Route path="/settings" element={<Settings />} />
+                </Routes>
+            </div>
+        </div>
     );
 }
 
