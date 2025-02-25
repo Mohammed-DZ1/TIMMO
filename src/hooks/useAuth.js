@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
 
 const AuthContext = createContext(null);
+const API_BASE_URL = 'https://timmodashboard.netlify.app';
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
@@ -13,7 +14,7 @@ export const AuthProvider = ({ children }) => {
             try {
                 setLoading(true);
                 setError(null);
-                const response = await axios.get('/.netlify/functions/checkAuth', {
+                const response = await axios.get(`${API_BASE_URL}/.netlify/functions/checkAuth`, {
                     withCredentials: true
                 });
                 setUser(response.data.user);
@@ -33,9 +34,14 @@ export const AuthProvider = ({ children }) => {
         try {
             setLoading(true);
             setError(null);
-            const response = await axios.post('/.netlify/functions/Login', 
+            const response = await axios.post(`${API_BASE_URL}/.netlify/functions/Login`, 
                 { email, password },
-                { withCredentials: true }
+                { 
+                    withCredentials: true,
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                }
             );
             setUser(response.data.user);
             return response.data;
@@ -51,8 +57,11 @@ export const AuthProvider = ({ children }) => {
         try {
             setLoading(true);
             setError(null);
-            await axios.post('/.netlify/functions/logout', {}, {
-                withCredentials: true
+            await axios.post(`${API_BASE_URL}/.netlify/functions/logout`, {}, {
+                withCredentials: true,
+                headers: {
+                    'Content-Type': 'application/json'
+                }
             });
             setUser(null);
         } catch (err) {
