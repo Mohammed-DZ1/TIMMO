@@ -9,59 +9,54 @@ import Clients from './pages/Clients';
 import Agents from './pages/Agents';
 import Settings from './pages/Settings';
 import Login from './pages/Login';
-import PrivateRoute from './components/PrivateRoute';
 import LanguageSelector from './components/LanguageSelector';
 import './i18n';
 
-// Layout component for the authenticated pages
-const AuthLayout = () => {
+const MainLayout = () => {
     const { user } = useAuth();
 
     if (!user) {
-        return null;
+        return <Navigate to="/login" replace />;
     }
 
     return (
         <div className="flex h-screen">
             <Sidebar />
-            <div className="flex-1 p-8 md:p-6 bg-gray-100 overflow-auto">
+            <main className="flex-1 p-8 md:p-6 bg-gray-100 overflow-auto">
                 <Routes>
-                    <Route index element={<Dashboard />} />
-                    <Route path="properties" element={<Properties />} />
-                    <Route path="clients" element={<Clients />} />
-                    <Route path="agents" element={<Agents />} />
-                    <Route path="settings" element={<Settings />} />
+                    <Route path="/" element={<Dashboard />} />
+                    <Route path="/properties" element={<Properties />} />
+                    <Route path="/clients" element={<Clients />} />
+                    <Route path="/agents" element={<Agents />} />
+                    <Route path="/settings" element={<Settings />} />
                 </Routes>
-            </div>
+            </main>
         </div>
     );
 };
 
-function App() {
-    const { t } = useTranslation();
-    const { loading } = useAuth();
+const App = () => {
+    const { loading, user } = useAuth();
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center min-h-screen bg-secondary-500">
+            <div className="flex items-center justify-center min-h-screen bg-gray-100">
                 <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-primary-500"></div>
             </div>
         );
     }
 
     return (
-        <div className="app-container">
+        <>
             <LanguageSelector />
             <Routes>
-                <Route path="/login" element={<Login />} />
-                <Route path="/*" element={
-                    <PrivateRoute>
-                        <AuthLayout />
-                    </PrivateRoute>
+                <Route path="/login" element={
+                    user ? <Navigate to="/" replace /> : <Login />
                 } />
+                <Route path="/*" element={<MainLayout />} />
             </Routes>
-        </div>
+        </>
     );
-}
+};
 
 export default App;
