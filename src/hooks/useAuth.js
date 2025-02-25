@@ -17,7 +17,15 @@ export const AuthProvider = ({ children }) => {
                 const response = await axios.get(`${API_BASE_URL}/.netlify/functions/checkAuth`, {
                     withCredentials: true
                 });
-                setUser(response.data.user);
+                
+                if (response.data && response.data.user) {
+                    setUser({
+                        email: response.data.user.email,
+                        role: response.data.user.role || 'user'
+                    });
+                } else {
+                    setUser(null);
+                }
             } catch (err) {
                 console.error('Auth check failed:', err);
                 setUser(null);
@@ -34,7 +42,7 @@ export const AuthProvider = ({ children }) => {
         try {
             setLoading(true);
             setError(null);
-            const response = await axios.post(`${API_BASE_URL}/.netlify/functions/Login`, 
+            const response = await axios.post(`${API_BASE_URL}/.netlify/functions/login`, 
                 { email, password },
                 { 
                     withCredentials: true,
@@ -43,8 +51,15 @@ export const AuthProvider = ({ children }) => {
                     }
                 }
             );
-            setUser(response.data.user);
-            return response.data;
+            
+            if (response.data && response.data.user) {
+                setUser({
+                    email: response.data.user.email,
+                    role: response.data.user.role || 'user'
+                });
+                return response.data;
+            }
+            throw new Error('Invalid response format');
         } catch (err) {
             setError(err.response?.data?.message || err.message);
             throw err;
@@ -73,24 +88,14 @@ export const AuthProvider = ({ children }) => {
     };
 
     const value = {
-        user,
+        user: user || null,
         loading,
         error,
         login,
         logout
     };
 
-    return (
-        <AuthContext.Provider value={value}>
-            {loading ? (
-                <div className="flex items-center justify-center min-h-screen bg-secondary-500">
-                    <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-primary-500"></div>
-                </div>
-            ) : (
-                children
-            )}
-        </AuthContext.Provider>
-    );
+    return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = () => {
