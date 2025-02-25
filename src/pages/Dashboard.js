@@ -66,26 +66,47 @@ const Dashboard = () => {
     }, [dateRange, selectedFilter, user]);
 
     const filterOptions = [
-        { value: 'all', label: t('allProperties') },
-        { value: 'sale', label: t('forSale') },
-        { value: 'rent', label: t('forRent') }
+        { value: 'all', label: t('dashboard.filters.all') || 'All Properties' },
+        { value: 'sale', label: t('dashboard.filters.sale') || 'For Sale' },
+        { value: 'rent', label: t('dashboard.filters.rent') || 'For Rent' }
     ];
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center h-full">
+                <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-primary-500"></div>
+            </div>
+        );
+    }
 
     if (error) {
         return (
-            <div className="p-6 text-center">
-                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-                    <p className="font-bold">{t('error')}</p>
-                    <p>{error}</p>
+            <div className="p-6">
+                <div className="bg-red-50 border-l-4 border-red-500 p-4">
+                    <div className="flex">
+                        <div className="flex-shrink-0">
+                            <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                            </svg>
+                        </div>
+                        <div className="ml-3">
+                            <h3 className="text-sm font-medium text-red-800">
+                                {t('dashboard.error.title') || 'Error Loading Dashboard'}
+                            </h3>
+                            <p className="mt-2 text-sm text-red-700">{error}</p>
+                        </div>
+                    </div>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="p-6">
-            <div className="flex justify-between items-center mb-10">
-                <h1 className="text-4xl font-bold">{t('dashboard')}</h1>
+        <div className="p-6 space-y-8">
+            <div className="flex justify-between items-center">
+                <h1 className="text-3xl font-bold text-secondary-900">
+                    {t('dashboard.title') || 'Dashboard'}
+                </h1>
                 <div className="flex gap-4">
                     <DateRangePicker
                         startDate={dateRange.start}
@@ -100,41 +121,40 @@ const Dashboard = () => {
                 </div>
             </div>
 
-            {/* KPI Section */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
                 <KpiCard 
                     title={t('activeProperties')} 
-                    value={loading ? '-' : dashboardData.activeProperties} 
+                    value={dashboardData.activeProperties} 
                     icon={<FiHome />} 
                     color="bg-blue-600" 
                 />
                 <KpiCard 
                     title={t('totalAgents')} 
-                    value={loading ? '-' : dashboardData.totalAgents} 
+                    value={dashboardData.totalAgents} 
                     icon={<FiUsers />} 
                     color="bg-green-600" 
                 />
                 <KpiCard 
                     title={t('revenueGrowth')} 
-                    value={loading ? '-' : dashboardData.revenueGrowth} 
+                    value={dashboardData.revenueGrowth} 
                     icon={<FiTrendingUp />} 
                     color="bg-yellow-600" 
                 />
                 <KpiCard 
                     title={t('averagePrice')} 
-                    value={loading ? '-' : dashboardData.averagePrice} 
+                    value={dashboardData.averagePrice} 
                     icon={<FiDollarSign />} 
                     color="bg-purple-600" 
                 />
                 <KpiCard 
                     title={t('avgDaysOnMarket')} 
-                    value={loading ? '-' : dashboardData.averageDaysOnMarket} 
+                    value={dashboardData.averageDaysOnMarket} 
                     icon={<FiClock />} 
                     color="bg-red-600" 
                 />
                 <KpiCard 
                     title={t('conversionRate')} 
-                    value={loading ? '-' : dashboardData.conversionRate} 
+                    value={dashboardData.conversionRate} 
                     icon={<FiPercent />} 
                     color="bg-indigo-600" 
                 />
@@ -145,61 +165,37 @@ const Dashboard = () => {
                 {/* Agent Performance Chart */}
                 <div className="p-6 bg-white shadow-md rounded-lg">
                     <h2 className="text-xl font-bold mb-4">{t('agentPerformance')}</h2>
-                    {loading ? (
-                        <div className="h-80 flex items-center justify-center">
-                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-                        </div>
-                    ) : (
-                        <LineChart
-                            data={dashboardData.agentPerformance}
-                            title={t('agentPerformance')}
-                        />
-                    )}
+                    <LineChart
+                        data={dashboardData.agentPerformance}
+                        title={t('agentPerformance')}
+                    />
                 </div>
 
                 {/* Property Distribution Chart */}
                 <div className="p-6 bg-white shadow-md rounded-lg">
                     <h2 className="text-xl font-bold mb-4">{t('propertyDistribution')}</h2>
-                    {loading ? (
-                        <div className="h-80 flex items-center justify-center">
-                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-                        </div>
-                    ) : (
-                        <PieChart
-                            data={dashboardData.propertyDistribution[selectedFilter === 'all' ? 'both' : selectedFilter === 'sale' ? 'forSale' : 'forRent']}
-                            title={t('propertyDistribution')}
-                        />
-                    )}
+                    <PieChart
+                        data={dashboardData.propertyDistribution[selectedFilter === 'all' ? 'both' : selectedFilter === 'sale' ? 'forSale' : 'forRent']}
+                        title={t('propertyDistribution')}
+                    />
                 </div>
 
                 {/* Property Types Chart */}
                 <div className="p-6 bg-white shadow-md rounded-lg">
                     <h2 className="text-xl font-bold mb-4">{t('propertyTypes')}</h2>
-                    {loading ? (
-                        <div className="h-80 flex items-center justify-center">
-                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-                        </div>
-                    ) : (
-                        <PieChart
-                            data={dashboardData.propertyTypes}
-                            title={t('propertyTypes')}
-                        />
-                    )}
+                    <PieChart
+                        data={dashboardData.propertyTypes}
+                        title={t('propertyTypes')}
+                    />
                 </div>
 
                 {/* Top Performing Areas Chart */}
                 <div className="p-6 bg-white shadow-md rounded-lg">
                     <h2 className="text-xl font-bold mb-4">{t('topPerformingAreas')}</h2>
-                    {loading ? (
-                        <div className="h-80 flex items-center justify-center">
-                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-                        </div>
-                    ) : (
-                        <LineChart
-                            data={dashboardData.topPerformingAreas}
-                            title={t('topPerformingAreas')}
-                        />
-                    )}
+                    <LineChart
+                        data={dashboardData.topPerformingAreas}
+                        title={t('topPerformingAreas')}
+                    />
                 </div>
             </div>
         </div>
@@ -207,4 +203,3 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
-                             
