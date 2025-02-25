@@ -4,34 +4,43 @@ import axios from 'axios';
 const AuthContext = createContext(null);
 const API_BASE_URL = 'https://timmodashboard.netlify.app';
 
+const initialState = {
+    user: null,
+    loading: true,
+    error: null
+};
+
 export const AuthProvider = ({ children }) => {
-    const [user, setUser] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
+    const [state, setState] = useState(initialState);
 
     useEffect(() => {
         const checkAuth = async () => {
             try {
-                setLoading(true);
-                setError(null);
+                setState(prev => ({ ...prev, loading: true, error: null }));
                 const response = await axios.get(`${API_BASE_URL}/.netlify/functions/checkAuth`, {
                     withCredentials: true
                 });
                 
                 if (response.data && response.data.user) {
-                    setUser({
-                        email: response.data.user.email,
-                        role: response.data.user.role || 'user'
-                    });
+                    setState(prev => ({
+                        ...prev,
+                        user: {
+                            email: response.data.user.email,
+                            role: response.data.user.role || 'user'
+                        },
+                        loading: false
+                    }));
                 } else {
-                    setUser(null);
+                    setState(prev => ({ ...prev, user: null, loading: false }));
                 }
             } catch (err) {
                 console.error('Auth check failed:', err);
-                setUser(null);
-                setError(err.message);
-            } finally {
-                setLoading(false);
+                setState(prev => ({
+                    ...prev,
+                    user: null,
+                    loading: false,
+                    error: err.message
+                }));
             }
         };
 
@@ -40,60 +49,81 @@ export const AuthProvider = ({ children }) => {
 
     const login = async (email, password) => {
         try {
-            setLoading(true);
-            setError(null);
-            const response = await axios.post(`${API_BASE_URL}/.netlify/functions/login`, 
+            setState(prev => ({ ...prev, loading: true, error: null }));
+            const response = await axios.post(
+                `${API_BASE_URL}/.netlify/functions/login`,
                 { email, password },
-                { 
+                {
                     withCredentials: true,
                     headers: {
                         'Content-Type': 'application/json'
                     }
                 }
             );
-            
+
             if (response.data && response.data.user) {
-                setUser({
-                    email: response.data.user.email,
-                    role: response.data.user.role || 'user'
-                });
+                setState(prev => ({
+                    ...prev,
+                    user: {
+                        email: response.data.user.email,
+                        role: response.data.user.role || 'user'
+                    },
+                    loading: false
+                }));
                 return response.data;
             }
             throw new Error('Invalid response format');
         } catch (err) {
-            setError(err.response?.data?.message || err.message);
+            const errorMessage = err.response?.data?.message || err.message;
+            setState(prev => ({
+                ...prev,
+                loading: false,
+                error: errorMessage
+            }));
             throw err;
-        } finally {
-            setLoading(false);
         }
     };
 
     const logout = async () => {
         try {
-            setLoading(true);
-            setError(null);
-            await axios.post(`${API_BASE_URL}/.netlify/functions/logout`, {}, {
-                withCredentials: true,
-                headers: {
-                    'Content-Type': 'application/json'
+            setState(prev => ({ ...prev, loading: true, error: null }));
+            await axios.post(
+                `${API_BASE_URL}/.netlify/functions/logout`,
+                {},
+                {
+                    withCredentials: true,
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
                 }
-            });
-            setUser(null);
+            );
+            setState(prev => ({ ...prev, user: null, loading: false }));
         } catch (err) {
-            setError(err.response?.data?.message || err.message);
+            const errorMessage = err.response?.data?.message || err.message;
+            setState(prev => ({
+                ...prev,
+                loading: false,
+                error: errorMessage
+            }));
             throw err;
-        } finally {
-            setLoading(false);
         }
     };
 
     const value = {
-        user: user || null,
-        loading,
-        error,
+        user: state.user,
+        loading: state.loading,
+        error: state.error,
         login,
         logout
     };
+
+    if (state.loading) {
+        return (
+            <div className="flex items-center justify-center min-h-screen bg-secondary-500">
+                <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-primary-500"></div>
+            </div>
+        );
+    }
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
