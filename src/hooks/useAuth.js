@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
 
-export const useAuth = () => {
+const useAuth = () => {
     const [user, setUser] = useState(null);
     const [role, setRole] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -117,3 +117,5 @@ export const useAuth = () => {
         checkAuth
     };
 };
+
+export default useAuth;
