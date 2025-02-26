@@ -9,7 +9,7 @@ exports.handler = async (event) => {
                 headers: {
                     'Access-Control-Allow-Origin': 'https://timmodashboard.netlify.app',
                     'Access-Control-Allow-Methods': 'POST, OPTIONS',
-                    'Access-Control-Allow-Headers': 'Content-Type',
+                    'Access-Control-Allow-Headers': 'Content-Type, Cookie',
                     'Access-Control-Allow-Credentials': 'true',
                 },
                 body: '',
@@ -62,10 +62,10 @@ exports.handler = async (event) => {
                 'Path=/',
                 'HttpOnly',
                 'Secure',
-                'Domain=timmodashboard.netlify.app',
-                'SameSite=Strict',
                 'Max-Age=86400' // 24 hours
             ].join('; ');
+
+            console.log('Setting cookie:', cookieOptions);
 
             return {
                 statusCode: 200,
