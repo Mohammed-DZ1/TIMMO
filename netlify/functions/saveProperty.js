@@ -9,6 +9,14 @@ const client = new MongoClient(uri, {
     useUnifiedTopology: true,
 });
 
+const verifyToken = (req) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  if (!token) {
+    throw new Error('Unauthorized - No token provided');
+  }
+  return jwt.verify(token, process.env.JWT_SECRET);
+};
+
 exports.handler = async (event, context) => {
     const headers = {
         'Access-Control-Allow-Origin': 'https://timmodashboard.netlify.app',
@@ -23,21 +31,7 @@ exports.handler = async (event, context) => {
     }
 
     try {
-        // Get token from cookie
-        const token = event.headers.cookie?.split(';')
-            .find(c => c.trim().startsWith('token='))
-            ?.split('=')[1];
-
-        if (!token) {
-            return {
-                statusCode: 401,
-                headers,
-                body: JSON.stringify({ message: 'Unauthorized - No token provided' })
-            };
-        }
-
-        // Verify token
-        const user = jwt.verify(token, process.env.JWT_SECRET);
+        const decoded = verifyToken(event);
 
         // Parse property data
         const propertyData = JSON.parse(event.body);
@@ -48,7 +42,7 @@ exports.handler = async (event, context) => {
         const propertiesCollection = db.collection('properties');
 
         // Add metadata
-        propertyData.createdBy = user.id;
+        propertyData.createdBy = decoded.id;
         propertyData.createdAt = new Date();
         propertyData.updatedAt = new Date();
 
