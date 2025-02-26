@@ -51,12 +51,18 @@ exports.handler = async (event, context) => {
         // Parse client data
         const clientData = JSON.parse(event.body);
 
-        // Connect to MongoDB with timeout
-        client = new MongoClient(process.env.MONGODB_URI, {
+        // Connect to MongoDB with proper replica set options
+        const uri = process.env.MONGODB_URI;
+        client = new MongoClient(uri, {
+            useNewUrlParser: true,
+            useUnifiedTopology: true,
             serverSelectionTimeoutMS: MONGODB_TIMEOUT,
             socketTimeoutMS: MONGODB_TIMEOUT,
             connectTimeoutMS: MONGODB_TIMEOUT,
-            maxPoolSize: 1
+            maxPoolSize: 1,
+            retryWrites: true,
+            w: 'majority',
+            directConnection: false
         });
 
         await client.connect();
@@ -78,9 +84,9 @@ exports.handler = async (event, context) => {
             property.createdAt = new Date();
             property.updatedAt = new Date();
 
-            // Save property with timeout
+            // Save property with timeout and write concern
             await Promise.race([
-                propertiesCollection.insertOne(property),
+                propertiesCollection.insertOne(property, { writeConcern: { w: 1, wtimeout: 2500 } }),
                 new Promise((_, reject) => 
                     setTimeout(() => reject(new Error('Property save timeout')), MONGODB_TIMEOUT)
                 )
@@ -90,9 +96,9 @@ exports.handler = async (event, context) => {
             delete clientData.property;
         }
 
-        // Save client with timeout
+        // Save client with timeout and write concern
         await Promise.race([
-            clientsCollection.insertOne(clientData),
+            clientsCollection.insertOne(clientData, { writeConcern: { w: 1, wtimeout: 2500 } }),
             new Promise((_, reject) => 
                 setTimeout(() => reject(new Error('Client save timeout')), MONGODB_TIMEOUT)
             )
@@ -118,11 +124,14 @@ exports.handler = async (event, context) => {
             };
         }
 
-        if (error.message && error.message.includes('timeout')) {
+        if (error.message && (error.message.includes('timeout') || error.name === 'MongoServerSelectionError')) {
             return {
                 statusCode: 504,
                 headers,
-                body: JSON.stringify({ message: 'Database operation timed out' })
+                body: JSON.stringify({ 
+                    message: 'Database connection timed out',
+                    error: error.message
+                })
             };
         }
 
@@ -146,7 +155,7 @@ exports.handler = async (event, context) => {
         if (client) {
             try {
                 await Promise.race([
-                    client.close(),
+                    client.close(true), // Force close
                     new Promise((_, reject) => 
                         setTimeout(() => reject(new Error('Connection close timeout')), 1000)
                     )
