@@ -14,6 +14,21 @@ const log = (message, data) => {
 
 const MONGODB_TIMEOUT = 5000; // 5 seconds timeout
 
+// Helper function to ensure MongoDB URI has all required parameters
+function getMongoUri(uri) {
+    const url = new URL(uri);
+    if (!url.searchParams.has('ssl')) {
+        url.searchParams.set('ssl', 'true');
+    }
+    if (!url.searchParams.has('replicaSet')) {
+        url.searchParams.set('replicaSet', 'atlas-n11wrb-shard-0');
+    }
+    if (!url.searchParams.has('authSource')) {
+        url.searchParams.set('authSource', 'admin');
+    }
+    return url.toString();
+}
+
 exports.handler = async (event, context) => {
     context.callbackWaitsForEmptyEventLoop = false;
     let client = null;
@@ -52,7 +67,7 @@ exports.handler = async (event, context) => {
         const clientData = JSON.parse(event.body);
 
         // Connect to MongoDB with proper replica set options
-        const uri = process.env.MONGODB_URI;
+        const uri = getMongoUri(process.env.MONGODB_URI);
         client = new MongoClient(uri, {
             useNewUrlParser: true,
             useUnifiedTopology: true,
@@ -61,7 +76,9 @@ exports.handler = async (event, context) => {
             connectTimeoutMS: MONGODB_TIMEOUT,
             maxPoolSize: 1,
             retryWrites: true,
-            w: 'majority',
+            ssl: true,
+            tls: true,
+            tlsAllowInvalidCertificates: false,
             directConnection: false
         });
 
@@ -86,7 +103,10 @@ exports.handler = async (event, context) => {
 
             // Save property with timeout and write concern
             await Promise.race([
-                propertiesCollection.insertOne(property, { writeConcern: { w: 1, wtimeout: 2500 } }),
+                propertiesCollection.insertOne(property, { 
+                    writeConcern: { w: 1, wtimeout: 2500 },
+                    readPreference: 'primary'
+                }),
                 new Promise((_, reject) => 
                     setTimeout(() => reject(new Error('Property save timeout')), MONGODB_TIMEOUT)
                 )
@@ -98,7 +118,10 @@ exports.handler = async (event, context) => {
 
         // Save client with timeout and write concern
         await Promise.race([
-            clientsCollection.insertOne(clientData, { writeConcern: { w: 1, wtimeout: 2500 } }),
+            clientsCollection.insertOne(clientData, { 
+                writeConcern: { w: 1, wtimeout: 2500 },
+                readPreference: 'primary'
+            }),
             new Promise((_, reject) => 
                 setTimeout(() => reject(new Error('Client save timeout')), MONGODB_TIMEOUT)
             )
@@ -155,7 +178,7 @@ exports.handler = async (event, context) => {
         if (client) {
             try {
                 await Promise.race([
-                    client.close(true), // Force close
+                    client.close(true),
                     new Promise((_, reject) => 
                         setTimeout(() => reject(new Error('Connection close timeout')), 1000)
                     )
