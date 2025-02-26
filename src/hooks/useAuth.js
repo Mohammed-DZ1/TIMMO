@@ -4,7 +4,7 @@ import Cookies from 'js-cookie';
 
 const AuthContext = createContext(null);
 
-export const AuthProvider = ({ children }) => {
+const AuthProvider = ({ children }) => {
     const [state, setState] = useState({
         user: null,
         loading: true,
@@ -117,4 +117,5 @@ const useAuth = () => {
     return context;
 };
 
-export { AuthProvider, useAuth };
+export { AuthProvider };
+export default useAuth;
