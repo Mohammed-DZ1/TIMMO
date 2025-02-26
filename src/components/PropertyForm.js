@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
+import api from '../services/api';
 
 const PropertyForm = ({ onSubmit, withCommission = false, clientOwned = false, clientId = null }) => {
     const [loading, setLoading] = useState(false);
@@ -71,9 +72,6 @@ const PropertyForm = ({ onSubmit, withCommission = false, clientOwned = false, c
             setLoading(true);
             setError(null);
 
-            // Retrieve token from local storage
-            const token = localStorage.getItem('token');
-
             // If this is part of a client form, just pass the data up
             if (clientOwned) {
                 onSubmit(propertyData);
@@ -81,23 +79,12 @@ const PropertyForm = ({ onSubmit, withCommission = false, clientOwned = false, c
             }
 
             // Otherwise, save directly to backend
-            const response = await fetch('https://timmodashboard.netlify.app/.netlify/functions/saveProperty', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                credentials: 'include',
-                body: JSON.stringify(propertyData)
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || 'Failed to save property');
+            try {
+                const response = await api.post('saveProperty', propertyData);
+                onSubmit && onSubmit(response.data);
+            } catch (error) {
+                throw new Error(error.response?.data?.message || 'Failed to save property');
             }
-
-            const result = await response.json();
-            onSubmit && onSubmit(result);
 
         } catch (err) {
             console.error('Error saving property:', err);
