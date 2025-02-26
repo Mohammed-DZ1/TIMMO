@@ -2,23 +2,21 @@ import axios from 'axios';
 
 // Configure API base URL
 const api = axios.create({
-    baseURL: '/.netlify/functions/'
+    baseURL: 'https://timmodashboard.netlify.app/.netlify/functions/',
+    withCredentials: true
 });
 
 // Add JWT token to request headers
 api.interceptors.request.use(config => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
+    // Remove token handling from localStorage
+    config.withCredentials = true;
+    return config;
 });
 
-// Login User (Uses Environment Variables if No Credentials Provided)
+// Login User
 export const loginUser = async (email, password) => {
     try {
         const response = await api.post('auth', { email, password });
-        localStorage.setItem('token', response.data.token);
         return response.data;
     } catch (error) {
         throw new Error(error.response?.data?.message || 'Login failed');
