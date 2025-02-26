@@ -20,6 +20,10 @@ exports.handler = async (event) => {
         if (event.httpMethod !== 'POST') {
             return {
                 statusCode: 405,
+                headers: {
+                    'Access-Control-Allow-Origin': 'https://timmodashboard.netlify.app',
+                    'Access-Control-Allow-Credentials': 'true',
+                },
                 body: JSON.stringify({ message: 'Method Not Allowed' }),
             };
         }
@@ -58,8 +62,8 @@ exports.handler = async (event) => {
                 'Path=/',
                 'HttpOnly',
                 'Secure',
-                'Domain=.netlify.app',
-                'SameSite=None',
+                'Domain=timmodashboard.netlify.app',
+                'SameSite=Strict',
                 'Max-Age=86400' // 24 hours
             ].join('; ');
 
