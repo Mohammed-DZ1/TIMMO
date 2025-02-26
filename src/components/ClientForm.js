@@ -66,19 +66,23 @@ const ClientForm = ({ onSubmit, initialType = null }) => {
             // First save the property if it exists
             if (clientData.property) {
                 try {
+                    console.log('Sending property data:', clientData.property);
                     const propertyResponse = await api.post('saveProperty', clientData.property);
-                    console.log('Property saved successfully:', propertyResponse.data);
+                    console.log('Property save response:', propertyResponse);
                 } catch (error) {
+                    console.error('Property save error:', error.response || error);
                     throw new Error(error.response?.data?.message || 'Failed to save property');
                 }
             }
 
             // Then save the client
             try {
+                console.log('Sending client data:', clientData);
                 const response = await api.post('saveClient', clientData);
-                console.log('Client saved successfully:', response.data);
+                console.log('Client save response:', response);
                 onSubmit && onSubmit(response.data);
             } catch (error) {
+                console.error('Client save error:', error.response || error);
                 throw new Error(error.response?.data?.message || 'Failed to save client');
             }
             
