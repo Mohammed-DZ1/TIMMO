@@ -1,6 +1,5 @@
 const jwt = require('jsonwebtoken');
 const { MongoClient } = require('mongodb');
-const console = console; // Add this line to ensure console is defined
 
 const uri = process.env.MONGODB_URI;
 const dbName = process.env.MONGODB_DB_NAME;
@@ -10,20 +9,10 @@ const client = new MongoClient(uri, {
     useUnifiedTopology: true,
 });
 
-const verifyToken = (req) => {
-  console.log('Verifying token...');
-  const token = req.headers.authorization?.split(' ')[1];
-  if (!token) {
-    throw new Error('Unauthorized - No token provided');
-  }
-  return jwt.verify(token, process.env.JWT_SECRET);
-};
-
 exports.handler = async (event, context) => {
-    console.log('Handling save property request...');
     const headers = {
         'Access-Control-Allow-Origin': 'https://timmodashboard.netlify.app',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        'Access-Control-Allow-Headers': 'Content-Type',
         'Access-Control-Allow-Methods': 'POST, OPTIONS',
         'Access-Control-Allow-Credentials': 'true'
     };
@@ -34,8 +23,22 @@ exports.handler = async (event, context) => {
     }
 
     try {
-        const decoded = verifyToken(event);
-        console.log('Token verified successfully:', decoded);
+        // Get token from cookie
+        const cookies = event.headers.cookie || '';
+        const tokenCookie = cookies.split(';').find(c => c.trim().startsWith('authToken='));
+        
+        if (!tokenCookie) {
+            return {
+                statusCode: 401,
+                headers,
+                body: JSON.stringify({ message: 'Unauthorized - No token provided' })
+            };
+        }
+
+        const token = tokenCookie.split('=')[1].trim();
+
+        // Verify token
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
         // Parse property data
         const propertyData = JSON.parse(event.body);
@@ -46,13 +49,11 @@ exports.handler = async (event, context) => {
         const propertiesCollection = db.collection('properties');
 
         // Add metadata
-        propertyData.createdBy = decoded.id;
+        propertyData.createdBy = decoded.email;
         propertyData.createdAt = new Date();
         propertyData.updatedAt = new Date();
 
         // Handle media files
-        // Note: You'll need to implement file upload separately
-        // This is just storing the references
         if (propertyData.media && propertyData.media.length > 0) {
             propertyData.mediaUrls = propertyData.media;
             delete propertyData.media;
@@ -72,14 +73,19 @@ exports.handler = async (event, context) => {
 
     } catch (error) {
         console.error('Save property error:', error);
+        
+        if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
+            return {
+                statusCode: 401,
+                headers,
+                body: JSON.stringify({ message: 'Unauthorized - Invalid or expired token' })
+            };
+        }
+        
         return {
-            statusCode: error.name === 'JsonWebTokenError' ? 401 : (error.statusCode || 500),
+            statusCode: 500,
             headers,
-            body: JSON.stringify({
-                message: error.name === 'JsonWebTokenError' 
-                    ? 'Unauthorized - Invalid token'
-                    : (error.message || 'Internal server error')
-            })
+            body: JSON.stringify({ message: 'Internal server error' })
         };
     } finally {
         await client.close();
