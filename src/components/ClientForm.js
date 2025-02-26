@@ -60,6 +60,25 @@ const ClientForm = ({ onSubmit, initialType = null }) => {
             setLoading(true);
             setError(null);
 
+            // First save the property if it exists
+            if (clientData.property) {
+                const propertyResponse = await fetch('https://timmodashboard.netlify.app/.netlify/functions/saveProperty', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify(clientData.property)
+                });
+
+                if (!propertyResponse.ok) {
+                    const errorData = await propertyResponse.json();
+                    throw new Error(errorData.message || 'Failed to save property');
+                }
+            }
+
+            // Then save the client
             const response = await fetch('https://timmodashboard.netlify.app/.netlify/functions/saveClient', {
                 method: 'POST',
                 headers: {
@@ -78,7 +97,7 @@ const ClientForm = ({ onSubmit, initialType = null }) => {
             onSubmit && onSubmit(result);
             
         } catch (err) {
-            console.error('Error saving client:', err);
+            console.error('Error saving:', err);
             setError(err.message);
         } finally {
             setLoading(false);
@@ -258,7 +277,7 @@ const ClientForm = ({ onSubmit, initialType = null }) => {
                     onClick={handleSubmit}
                     className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50"
                 >
-                    {loading ? 'Saving...' : 'Save Client'}
+                    {loading ? 'Saving...' : showPropertyForm ? 'Save Client & Property' : 'Save Client'}
                 </button>
             </div>
         </div>
