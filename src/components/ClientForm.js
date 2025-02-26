@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import PropertyForm from './PropertyForm';
+import api from '../services/api';
 
 const ClientForm = ({ onSubmit, initialType = null }) => {
     const [clientType, setClientType] = useState(initialType);
@@ -62,52 +63,24 @@ const ClientForm = ({ onSubmit, initialType = null }) => {
             setLoading(true);
             setError(null);
 
-            // Get the token
-            const token = localStorage.getItem('token');
-            if (!token) {
-                throw new Error('Authentication token not found');
-            }
-
             // First save the property if it exists
             if (clientData.property) {
-                const propertyResponse = await fetch('https://timmodashboard.netlify.app/.netlify/functions/saveProperty', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
-                    credentials: 'include',
-                    body: JSON.stringify(clientData.property)
-                });
-
-                if (!propertyResponse.ok) {
-                    const errorData = await propertyResponse.json();
-                    throw new Error(errorData.message || 'Failed to save property');
+                try {
+                    const propertyResponse = await api.post('saveProperty', clientData.property);
+                    console.log('Property saved successfully:', propertyResponse.data);
+                } catch (error) {
+                    throw new Error(error.response?.data?.message || 'Failed to save property');
                 }
-
-                const propertyResult = await propertyResponse.json();
-                console.log('Property saved successfully:', propertyResult);
             }
 
             // Then save the client
-            const response = await fetch('https://timmodashboard.netlify.app/.netlify/functions/saveClient', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                credentials: 'include',
-                body: JSON.stringify(clientData)
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || 'Failed to save client');
+            try {
+                const response = await api.post('saveClient', clientData);
+                console.log('Client saved successfully:', response.data);
+                onSubmit && onSubmit(response.data);
+            } catch (error) {
+                throw new Error(error.response?.data?.message || 'Failed to save client');
             }
-
-            const result = await response.json();
-            console.log('Client saved successfully:', result);
-            onSubmit && onSubmit(result);
             
         } catch (err) {
             console.error('Error saving:', err);
