@@ -1,6 +1,17 @@
 const jwt = require('jsonwebtoken');
 const { MongoClient } = require('mongodb');
 
+// Safe logging function
+const log = (message, data) => {
+    try {
+        if (process.env.NODE_ENV !== 'production') {
+            console.log(message, data);
+        }
+    } catch (e) {
+        // Ignore logging errors
+    }
+};
+
 exports.handler = async (event, context) => {
     context.callbackWaitsForEmptyEventLoop = false;
     let client = null;
@@ -79,7 +90,7 @@ exports.handler = async (event, context) => {
         };
 
     } catch (error) {
-        console.error('Save client error:', error);
+        log('Save client error:', error);
         
         if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
             return {
@@ -102,12 +113,16 @@ exports.handler = async (event, context) => {
             headers,
             body: JSON.stringify({ 
                 message: 'Internal server error',
-                error: error.message 
+                error: error.message || 'Unknown error'
             })
         };
     } finally {
         if (client) {
-            await client.close();
+            try {
+                await client.close();
+            } catch (e) {
+                log('Error closing MongoDB connection:', e);
+            }
         }
     }
 };
