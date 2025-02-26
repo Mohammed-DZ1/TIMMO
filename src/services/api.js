@@ -2,34 +2,26 @@ import axios from 'axios';
 
 // Configure API base URL
 const api = axios.create({
-    baseURL: 'https://timmodashboard.netlify.app/.netlify/functions/',
+    baseURL: '/.netlify/functions',
     withCredentials: true,
     headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
     }
 });
 
 // Login User
 export const loginUser = async (email, password) => {
-    try {
-        // Use the correct endpoint name that matches your Netlify function file
-        const response = await api.post('Login', { email, password });
-        return response.data;
-    } catch (error) {
-        console.error('Login error:', error);
-        throw error; // Let the UI handle the error display
-    }
+    return api.post('/Login', { email, password });
 };
 
-// Fetch Dashboard Stats
-export const getDashboardStats = async () => {
-    try {
-        const response = await api.get('getDashboardStats');
-        return response.data;
-    } catch (error) {
-        console.error('Error fetching dashboard stats:', error);
-        throw new Error(error.response?.data?.message || 'Failed to load dashboard data');
-    }
+// Check Auth
+export const checkAuth = async () => {
+    return api.get('/checkAuth');
+};
+
+// Logout User
+export const logoutUser = async () => {
+    return api.post('/logout');
 };
 
 export default api;
