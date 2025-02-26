@@ -1,115 +1,101 @@
-import { createContext, useContext, useState, useEffect } from 'react';
-import api, { loginUser } from '../services/api';
-import Cookies from 'js-cookie';
+const jwt = require('jsonwebtoken');
 
-const AuthContext = createContext(null);
+const checkAuth = async (event) => {
+    try {
+        // Handle Preflight CORS requests
+        if (event.httpMethod === 'OPTIONS') {
+            return {
+                statusCode: 200,
+                headers: {
+                    'Access-Control-Allow-Origin': 'https://timmodashboard.netlify.app',
+                    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+                    'Access-Control-Allow-Headers': 'Content-Type, Cookie',
+                    'Access-Control-Allow-Credentials': 'true',
+                },
+                body: '',
+            };
+        }
 
-const AuthProvider = ({ children }) => {
-    const [state, setState] = useState({
-        user: null,
-        loading: true,
-        error: null
-    });
+        // Allow only GET requests
+        if (event.httpMethod !== 'GET') {
+            return {
+                statusCode: 405,
+                headers: {
+                    'Access-Control-Allow-Origin': 'https://timmodashboard.netlify.app',
+                    'Access-Control-Allow-Credentials': 'true',
+                },
+                body: JSON.stringify({ message: 'Method Not Allowed' }),
+            };
+        }
 
-    useEffect(() => {
-        const checkAuth = async () => {
-            try {
-                setState(prev => ({ ...prev, loading: true, error: null }));
-                const response = await api.get('checkAuth', {
-                    withCredentials: true
-                });
-                
-                if (response.data && response.data.user) {
-                    setState(prev => ({
-                        ...prev,
-                        user: {
-                            email: response.data.user.email,
-                            role: response.data.user.role || 'user'
-                        },
-                        loading: false
-                    }));
-                } else {
-                    setState(prev => ({ ...prev, user: null, loading: false }));
+        console.log('Headers received:', event.headers);
+        console.log('Cookies received:', event.headers.cookie);
+
+        // Get the token from cookies
+        const cookies = event.headers.cookie || '';
+        const tokenCookie = cookies.split(';').find(c => c.trim().startsWith('authToken='));
+        
+        if (!tokenCookie) {
+            console.log('No auth token found in cookies');
+            return {
+                statusCode: 401,
+                headers: {
+                    'Access-Control-Allow-Origin': 'https://timmodashboard.netlify.app',
+                    'Access-Control-Allow-Credentials': 'true',
+                },
+                body: JSON.stringify({ message: 'No authentication token' }),
+            };
+        }
+
+        const token = tokenCookie.split('=')[1].trim();
+        console.log('Token found:', token.substring(0, 10) + '...');
+
+        const secretKey = process.env.JWT_SECRET;
+
+        if (!secretKey) {
+            console.error("Missing JWT_SECRET environment variable");
+            return {
+                statusCode: 500,
+                headers: {
+                    'Access-Control-Allow-Origin': 'https://timmodashboard.netlify.app',
+                    'Access-Control-Allow-Credentials': 'true',
+                },
+                body: JSON.stringify({ message: 'Server configuration error' }),
+            };
+        }
+
+        // Verify the token
+        const decoded = jwt.verify(token, secretKey);
+        console.log('Token verified for user:', decoded.email);
+
+        return {
+            statusCode: 200,
+            headers: {
+                'Access-Control-Allow-Origin': 'https://timmodashboard.netlify.app',
+                'Access-Control-Allow-Credentials': 'true',
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                message: 'Authentication valid',
+                user: {
+                    email: decoded.email,
+                    role: decoded.role
                 }
-            } catch (err) {
-                // Don't log error for 401 as it's expected when not logged in
-                if (err.response?.status !== 401) {
-                    console.error('Auth check failed:', err);
-                }
-                setState(prev => ({
-                    ...prev,
-                    user: null,
-                    loading: false,
-                    error: null // Don't set error for auth check failures
-                }));
-            }
+            }),
         };
-
-        checkAuth();
-    }, []);
-
-    const login = async (email, password) => {
-        try {
-            setState(prev => ({ ...prev, loading: true, error: null }));
-            const response = await loginUser(email, password);
-            
-            if (response.user) {
-                setState(prev => ({
-                    ...prev,
-                    user: {
-                        email: response.user.email,
-                        role: response.user.role || 'user'
-                    },
-                    loading: false
-                }));
-                return response;
-            }
-            throw new Error('Invalid response format');
-        } catch (err) {
-            setState(prev => ({
-                ...prev,
-                loading: false,
-                error: err.response?.data?.message || err.message
-            }));
-            throw err;
-        }
-    };
-
-    const logout = async () => {
-        try {
-            setState(prev => ({ ...prev, loading: true, error: null }));
-            await api.post('logout');
-            // Remove the auth token cookie
-            Cookies.remove('authToken', { path: '/' });
-            setState(prev => ({ ...prev, user: null, loading: false }));
-        } catch (err) {
-            setState(prev => ({
-                ...prev,
-                loading: false,
-                error: err.response?.data?.message || err.message
-            }));
-            throw err;
-        }
-    };
-
-    const value = {
-        user: state.user,
-        loading: state.loading,
-        error: state.error,
-        login,
-        logout
-    };
-
-    return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-};
-
-const useAuth = () => {
-    const context = useContext(AuthContext);
-    if (!context) {
-        throw new Error('useAuth must be used within an AuthProvider');
+    } catch (error) {
+        console.error('Auth check error:', error);
+        return {
+            statusCode: 401,
+            headers: {
+                'Access-Control-Allow-Origin': 'https://timmodashboard.netlify.app',
+                'Access-Control-Allow-Credentials': 'true',
+            },
+            body: JSON.stringify({ message: 'Invalid or expired token' }),
+        };
     }
-    return context;
 };
 
-export { AuthProvider };
-export default useAuth;
+exports.handler = async (event) => {
+    return checkAuth(event);
+};
