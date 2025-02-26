@@ -12,11 +12,12 @@ const api = axios.create({
 // Login User
 export const loginUser = async (email, password) => {
     try {
+        // Use the correct endpoint name that matches your Netlify function file
         const response = await api.post('Login', { email, password });
         return response.data;
     } catch (error) {
         console.error('Login error:', error);
-        throw new Error(error.response?.data?.message || 'Login failed');
+        throw error; // Let the UI handle the error display
     }
 };
 
