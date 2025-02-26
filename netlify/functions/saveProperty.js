@@ -1,15 +1,33 @@
 const jwt = require('jsonwebtoken');
 const { MongoClient } = require('mongodb');
 
-const uri = process.env.MONGODB_URI;
-const dbName = process.env.MONGODB_DB_NAME;
+let cachedDb = null;
 
-const client = new MongoClient(uri, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-});
+async function connectToDatabase(uri) {
+    if (cachedDb) {
+        return cachedDb;
+    }
+
+    try {
+        const client = new MongoClient(uri, {
+            useNewUrlParser: true,
+            useUnifiedTopology: true,
+        });
+
+        await client.connect();
+        const db = client.db(process.env.MONGODB_DB_NAME);
+        cachedDb = db;
+        return db;
+    } catch (error) {
+        console.error('MongoDB connection error:', error);
+        throw error;
+    }
+}
 
 exports.handler = async (event, context) => {
+    // Set context.callbackWaitsForEmptyEventLoop to false to prevent timeout
+    context.callbackWaitsForEmptyEventLoop = false;
+
     const headers = {
         'Access-Control-Allow-Origin': 'https://timmodashboard.netlify.app',
         'Access-Control-Allow-Headers': 'Content-Type',
@@ -44,8 +62,7 @@ exports.handler = async (event, context) => {
         const propertyData = JSON.parse(event.body);
 
         // Connect to MongoDB
-        await client.connect();
-        const db = client.db(dbName);
+        const db = await connectToDatabase(process.env.MONGODB_URI);
         const propertiesCollection = db.collection('properties');
 
         // Add metadata
@@ -81,13 +98,19 @@ exports.handler = async (event, context) => {
                 body: JSON.stringify({ message: 'Unauthorized - Invalid or expired token' })
             };
         }
+
+        if (error.name === 'MongoError' || error.name === 'MongoServerError') {
+            return {
+                statusCode: 500,
+                headers,
+                body: JSON.stringify({ message: 'Database error - Failed to save property' })
+            };
+        }
         
         return {
             statusCode: 500,
             headers,
             body: JSON.stringify({ message: 'Internal server error' })
         };
-    } finally {
-        await client.close();
     }
 };
