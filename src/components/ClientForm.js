@@ -55,10 +55,18 @@ const ClientForm = ({ onSubmit, initialType = null }) => {
         setClientData(combinedData);
     };
 
-    const handleSubmit = async () => {
+    const handleSubmit = async (e) => {
+        if (e) e.preventDefault();
+        
         try {
             setLoading(true);
             setError(null);
+
+            // Get the token
+            const token = localStorage.getItem('token');
+            if (!token) {
+                throw new Error('Authentication token not found');
+            }
 
             // First save the property if it exists
             if (clientData.property) {
@@ -66,7 +74,7 @@ const ClientForm = ({ onSubmit, initialType = null }) => {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                        'Authorization': `Bearer ${token}`
                     },
                     credentials: 'include',
                     body: JSON.stringify(clientData.property)
@@ -76,6 +84,9 @@ const ClientForm = ({ onSubmit, initialType = null }) => {
                     const errorData = await propertyResponse.json();
                     throw new Error(errorData.message || 'Failed to save property');
                 }
+
+                const propertyResult = await propertyResponse.json();
+                console.log('Property saved successfully:', propertyResult);
             }
 
             // Then save the client
@@ -83,6 +94,7 @@ const ClientForm = ({ onSubmit, initialType = null }) => {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
                 },
                 credentials: 'include',
                 body: JSON.stringify(clientData)
@@ -94,6 +106,7 @@ const ClientForm = ({ onSubmit, initialType = null }) => {
             }
 
             const result = await response.json();
+            console.log('Client saved successfully:', result);
             onSubmit && onSubmit(result);
             
         } catch (err) {
@@ -129,7 +142,7 @@ const ClientForm = ({ onSubmit, initialType = null }) => {
     }
 
     return (
-        <div className="space-y-8">
+        <form onSubmit={handleSubmit} className="space-y-8">
             {error && (
                 <div className="rounded-md bg-red-50 p-4">
                     <div className="flex">
@@ -147,7 +160,6 @@ const ClientForm = ({ onSubmit, initialType = null }) => {
                     </div>
                 </div>
             )}
-
             <div className="space-y-6">
                 <h2 className="text-lg font-medium text-gray-900">Client Information</h2>
                 <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
@@ -272,15 +284,14 @@ const ClientForm = ({ onSubmit, initialType = null }) => {
 
             <div className="flex justify-end space-x-3">
                 <button
-                    type="button"
+                    type="submit"
                     disabled={loading}
-                    onClick={handleSubmit}
                     className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50"
                 >
                     {loading ? 'Saving...' : showPropertyForm ? 'Save Client & Property' : 'Save Client'}
                 </button>
             </div>
-        </div>
+        </form>
     );
 };
 
