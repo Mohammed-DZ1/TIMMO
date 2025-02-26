@@ -71,6 +71,9 @@ const PropertyForm = ({ onSubmit, withCommission = false, clientOwned = false, c
             setLoading(true);
             setError(null);
 
+            // Retrieve token from local storage
+            const token = localStorage.getItem('token');
+
             // If this is part of a client form, just pass the data up
             if (clientOwned) {
                 onSubmit(propertyData);
@@ -82,6 +85,7 @@ const PropertyForm = ({ onSubmit, withCommission = false, clientOwned = false, c
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
                 },
                 credentials: 'include',
                 body: JSON.stringify(propertyData)
