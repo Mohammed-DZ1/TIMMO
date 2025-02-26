@@ -102,6 +102,7 @@ const PropertyForm = ({ onSubmit, withCommission = false, clientOwned = false, c
         } catch (err) {
             console.error('Error saving property:', err);
             setError(err.message);
+            throw err; // Propagate error up
         } finally {
             setLoading(false);
         }
