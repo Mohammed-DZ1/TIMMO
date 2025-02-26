@@ -9,7 +9,7 @@ const checkAuth = async (event) => {
                 headers: {
                     'Access-Control-Allow-Origin': 'https://timmodashboard.netlify.app',
                     'Access-Control-Allow-Methods': 'GET, OPTIONS',
-                    'Access-Control-Allow-Headers': 'Content-Type',
+                    'Access-Control-Allow-Headers': 'Content-Type, Cookie',
                     'Access-Control-Allow-Credentials': 'true',
                 },
                 body: '',
