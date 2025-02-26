@@ -1,4 +1,5 @@
 import axios from 'axios';
+import Cookies from 'js-cookie';
 
 // Configure API base URL
 const api = axios.create({
@@ -6,9 +7,12 @@ const api = axios.create({
     withCredentials: true
 });
 
-// Add JWT token to request headers
+// Add Authorization header from cookie
 api.interceptors.request.use(config => {
-    // Remove token handling from localStorage
+    const token = Cookies.get('authToken');
+    if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+    }
     config.withCredentials = true;
     return config;
 });
@@ -17,6 +21,12 @@ api.interceptors.request.use(config => {
 export const loginUser = async (email, password) => {
     try {
         const response = await api.post('auth', { email, password });
+        // Set the token in a cookie that will be included in all requests
+        Cookies.set('authToken', response.data.token, { 
+            secure: true,
+            sameSite: 'strict',
+            path: '/'
+        });
         return response.data;
     } catch (error) {
         throw new Error(error.response?.data?.message || 'Login failed');
