@@ -12,7 +12,7 @@ const client = new MongoClient(uri, {
 exports.handler = async (event, context) => {
     const headers = {
         'Access-Control-Allow-Origin': 'https://timmodashboard.netlify.app',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        'Access-Control-Allow-Headers': 'Content-Type',
         'Access-Control-Allow-Methods': 'POST, OPTIONS',
         'Access-Control-Allow-Credentials': 'true'
     };
@@ -24,11 +24,10 @@ exports.handler = async (event, context) => {
 
     try {
         // Get token from cookie
-        const token = event.headers.cookie?.split(';')
-            .find(c => c.trim().startsWith('token='))
-            ?.split('=')[1];
-
-        if (!token) {
+        const cookies = event.headers.cookie || '';
+        const tokenCookie = cookies.split(';').find(c => c.trim().startsWith('authToken='));
+        
+        if (!tokenCookie) {
             return {
                 statusCode: 401,
                 headers,
@@ -36,8 +35,10 @@ exports.handler = async (event, context) => {
             };
         }
 
+        const token = tokenCookie.split('=')[1].trim();
+
         // Verify token
-        const user = jwt.verify(token, process.env.JWT_SECRET);
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
         // Parse client data
         const clientData = JSON.parse(event.body);
@@ -49,7 +50,7 @@ exports.handler = async (event, context) => {
         const propertiesCollection = db.collection('properties');
 
         // Add metadata
-        clientData.createdBy = user.id;
+        clientData.createdBy = decoded.email;
         clientData.createdAt = new Date();
         clientData.updatedAt = new Date();
 
@@ -57,7 +58,7 @@ exports.handler = async (event, context) => {
         if (clientData.type === 'OWNER' && clientData.property) {
             const property = clientData.property;
             property.clientId = clientData.clientId;
-            property.createdBy = user.id;
+            property.createdBy = decoded.email;
             property.createdAt = new Date();
             property.updatedAt = new Date();
 
@@ -82,14 +83,19 @@ exports.handler = async (event, context) => {
 
     } catch (error) {
         console.error('Save client error:', error);
+        
+        if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
+            return {
+                statusCode: 401,
+                headers,
+                body: JSON.stringify({ message: 'Unauthorized - Invalid or expired token' })
+            };
+        }
+        
         return {
-            statusCode: error.name === 'JsonWebTokenError' ? 401 : 500,
+            statusCode: 500,
             headers,
-            body: JSON.stringify({
-                message: error.name === 'JsonWebTokenError' 
-                    ? 'Unauthorized - Invalid token'
-                    : 'Internal server error'
-            })
+            body: JSON.stringify({ message: 'Internal server error' })
         };
     } finally {
         await client.close();
