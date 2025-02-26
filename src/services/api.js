@@ -9,11 +9,21 @@ const api = axios.create({
 export const loginUser = async (email, password) => {
     try {
         const response = await api.post('auth', { email, password });
+        localStorage.setItem('token', response.data.token);
         return response.data;
     } catch (error) {
         throw new Error(error.response?.data?.message || 'Login failed');
     }
 };
+
+// Add JWT token to request headers
+api.interceptors.request.use(config => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
 
 // Fetch Dashboard Stats
 export const getDashboardStats = async () => {
