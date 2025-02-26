@@ -12,9 +12,10 @@ const api = axios.create({
 // Login User
 export const loginUser = async (email, password) => {
     try {
-        const response = await api.post('auth', { email, password });
+        const response = await api.post('Login', { email, password });
         return response.data;
     } catch (error) {
+        console.error('Login error:', error);
         throw new Error(error.response?.data?.message || 'Login failed');
     }
 };
