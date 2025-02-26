@@ -5,6 +5,15 @@ const api = axios.create({
     baseURL: '/.netlify/functions/'
 });
 
+// Add JWT token to request headers
+api.interceptors.request.use(config => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
 // Login User (Uses Environment Variables if No Credentials Provided)
 export const loginUser = async (email, password) => {
     try {
@@ -16,15 +25,6 @@ export const loginUser = async (email, password) => {
     }
 };
 
-// Add JWT token to request headers
-api.interceptors.request.use(config => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
-
 // Fetch Dashboard Stats
 export const getDashboardStats = async () => {
     try {
@@ -35,3 +35,5 @@ export const getDashboardStats = async () => {
         throw new Error(error.response?.data?.message || 'Failed to load dashboard data');
     }
 };
+
+export default api;
