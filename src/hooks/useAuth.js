@@ -1,8 +1,8 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../services/api';
+import Cookies from 'js-cookie';
 
 const AuthContext = createContext(null);
-const API_BASE_URL = 'https://timmodashboard.netlify.app';
 
 export const AuthProvider = ({ children }) => {
     const [state, setState] = useState({
@@ -15,7 +15,7 @@ export const AuthProvider = ({ children }) => {
         const checkAuth = async () => {
             try {
                 setState(prev => ({ ...prev, loading: true, error: null }));
-                const response = await axios.get(`${API_BASE_URL}/.netlify/functions/checkAuth`, {
+                const response = await api.get('checkAuth', {
                     withCredentials: true
                 });
                 
@@ -48,18 +48,18 @@ export const AuthProvider = ({ children }) => {
     const login = async (email, password) => {
         try {
             setState(prev => ({ ...prev, loading: true, error: null }));
-            const response = await axios.post(
-                `${API_BASE_URL}/.netlify/functions/Login`,
-                { email, password },
-                {
-                    withCredentials: true,
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                }
-            );
+            const response = await api.post('login', { email, password });
 
             if (response.data && response.data.user) {
+                // Set the auth token cookie
+                if (response.data.token) {
+                    Cookies.set('authToken', response.data.token, { 
+                        secure: true,
+                        sameSite: 'strict',
+                        path: '/'
+                    });
+                }
+
                 setState(prev => ({
                     ...prev,
                     user: {
@@ -84,16 +84,9 @@ export const AuthProvider = ({ children }) => {
     const logout = async () => {
         try {
             setState(prev => ({ ...prev, loading: true, error: null }));
-            await axios.post(
-                `${API_BASE_URL}/.netlify/functions/logout`,
-                {},
-                {
-                    withCredentials: true,
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                }
-            );
+            await api.post('logout');
+            // Remove the auth token cookie
+            Cookies.remove('authToken', { path: '/' });
             setState(prev => ({ ...prev, user: null, loading: false }));
         } catch (err) {
             setState(prev => ({
@@ -116,7 +109,7 @@ export const AuthProvider = ({ children }) => {
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
-export const useAuth = () => {
+const useAuth = () => {
     const context = useContext(AuthContext);
     if (!context) {
         throw new Error('useAuth must be used within an AuthProvider');
@@ -124,4 +117,4 @@ export const useAuth = () => {
     return context;
 };
 
-export default useAuth;
+export { AuthProvider, useAuth };
