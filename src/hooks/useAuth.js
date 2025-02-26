@@ -32,12 +32,15 @@ const AuthProvider = ({ children }) => {
                     setState(prev => ({ ...prev, user: null, loading: false }));
                 }
             } catch (err) {
-                console.error('Auth check failed:', err);
+                // Don't log error for 401 as it's expected when not logged in
+                if (err.response?.status !== 401) {
+                    console.error('Auth check failed:', err);
+                }
                 setState(prev => ({
                     ...prev,
                     user: null,
                     loading: false,
-                    error: err.message
+                    error: null // Don't set error for auth check failures
                 }));
             }
         };
@@ -51,15 +54,7 @@ const AuthProvider = ({ children }) => {
             const response = await api.post('login', { email, password });
 
             if (response.data && response.data.user) {
-                // Set the auth token cookie
-                if (response.data.token) {
-                    Cookies.set('authToken', response.data.token, { 
-                        secure: true,
-                        sameSite: 'strict',
-                        path: '/'
-                    });
-                }
-
+                // No need to set cookie here as it's handled by the server
                 setState(prev => ({
                     ...prev,
                     user: {
