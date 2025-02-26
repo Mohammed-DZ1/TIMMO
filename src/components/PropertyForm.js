@@ -80,16 +80,19 @@ const PropertyForm = ({ onSubmit, withCommission = false, clientOwned = false, c
 
             // Otherwise, save directly to backend
             try {
+                console.log('Sending property data:', propertyData);
                 const response = await api.post('saveProperty', propertyData);
+                console.log('Property save response:', response);
                 onSubmit && onSubmit(response.data);
             } catch (error) {
-                throw new Error(error.response?.data?.message || 'Failed to save property');
+                console.error('Detailed error:', error.response || error);
+                const errorMessage = error.response?.data?.message || error.message || 'Failed to save property';
+                setError(errorMessage);
             }
 
         } catch (err) {
             console.error('Error saving property:', err);
             setError(err.message);
-            throw err; // Propagate error up
         } finally {
             setLoading(false);
         }
