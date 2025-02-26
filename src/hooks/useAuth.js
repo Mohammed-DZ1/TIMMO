@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import api from '../services/api';
+import api, { loginUser } from '../services/api';
 import Cookies from 'js-cookie';
 
 const AuthContext = createContext(null);
@@ -51,19 +51,18 @@ const AuthProvider = ({ children }) => {
     const login = async (email, password) => {
         try {
             setState(prev => ({ ...prev, loading: true, error: null }));
-            const response = await api.post('login', { email, password });
-
-            if (response.data && response.data.user) {
-                // No need to set cookie here as it's handled by the server
+            const response = await loginUser(email, password);
+            
+            if (response.user) {
                 setState(prev => ({
                     ...prev,
                     user: {
-                        email: response.data.user.email,
-                        role: response.data.user.role || 'user'
+                        email: response.user.email,
+                        role: response.user.role || 'user'
                     },
                     loading: false
                 }));
-                return response.data;
+                return response;
             }
             throw new Error('Invalid response format');
         } catch (err) {
