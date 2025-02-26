@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const { MongoClient } = require('mongodb');
+const console = console; // Add this line to ensure console is defined
 
 const uri = process.env.MONGODB_URI;
 const dbName = process.env.MONGODB_DB_NAME;
@@ -10,6 +11,7 @@ const client = new MongoClient(uri, {
 });
 
 const verifyToken = (req) => {
+  console.log('Verifying token...');
   const token = req.headers.authorization?.split(' ')[1];
   if (!token) {
     throw new Error('Unauthorized - No token provided');
@@ -18,6 +20,7 @@ const verifyToken = (req) => {
 };
 
 exports.handler = async (event, context) => {
+    console.log('Handling save property request...');
     const headers = {
         'Access-Control-Allow-Origin': 'https://timmodashboard.netlify.app',
         'Access-Control-Allow-Headers': 'Content-Type, Authorization',
@@ -32,6 +35,7 @@ exports.handler = async (event, context) => {
 
     try {
         const decoded = verifyToken(event);
+        console.log('Token verified successfully:', decoded);
 
         // Parse property data
         const propertyData = JSON.parse(event.body);
@@ -69,12 +73,12 @@ exports.handler = async (event, context) => {
     } catch (error) {
         console.error('Save property error:', error);
         return {
-            statusCode: error.name === 'JsonWebTokenError' ? 401 : 500,
+            statusCode: error.name === 'JsonWebTokenError' ? 401 : (error.statusCode || 500),
             headers,
             body: JSON.stringify({
                 message: error.name === 'JsonWebTokenError' 
                     ? 'Unauthorized - Invalid token'
-                    : 'Internal server error'
+                    : (error.message || 'Internal server error')
             })
         };
     } finally {
