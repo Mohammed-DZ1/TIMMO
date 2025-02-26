@@ -32,9 +32,7 @@ exports.handler = async (event) => {
             'Path=/',
             'HttpOnly',
             'Secure',
-            'Domain=.netlify.app',
-            'SameSite=None',
-            'Max-Age=0',
+            'SameSite=Strict',
             'Expires=Thu, 01 Jan 1970 00:00:00 GMT'
         ].join('; ');
 
