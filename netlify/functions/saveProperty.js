@@ -12,6 +12,8 @@ const log = (message, data) => {
     }
 };
 
+const MONGODB_TIMEOUT = 5000; // 5 seconds timeout
+
 exports.handler = async (event, context) => {
     context.callbackWaitsForEmptyEventLoop = false;
     let client = null;
@@ -49,8 +51,14 @@ exports.handler = async (event, context) => {
         // Parse property data
         const propertyData = JSON.parse(event.body);
 
-        // Connect to MongoDB
-        client = new MongoClient(process.env.MONGODB_URI);
+        // Connect to MongoDB with timeout
+        client = new MongoClient(process.env.MONGODB_URI, {
+            serverSelectionTimeoutMS: MONGODB_TIMEOUT,
+            socketTimeoutMS: MONGODB_TIMEOUT,
+            connectTimeoutMS: MONGODB_TIMEOUT,
+            maxPoolSize: 1
+        });
+
         await client.connect();
         
         const db = client.db(process.env.MONGODB_DB_NAME);
@@ -67,8 +75,13 @@ exports.handler = async (event, context) => {
             delete propertyData.media;
         }
 
-        // Save property
-        await propertiesCollection.insertOne(propertyData);
+        // Save property with timeout
+        await Promise.race([
+            propertiesCollection.insertOne(propertyData),
+            new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Property save timeout')), MONGODB_TIMEOUT)
+            )
+        ]);
 
         return {
             statusCode: 200,
@@ -87,6 +100,14 @@ exports.handler = async (event, context) => {
                 statusCode: 401,
                 headers,
                 body: JSON.stringify({ message: 'Unauthorized - Invalid or expired token' })
+            };
+        }
+
+        if (error.message && error.message.includes('timeout')) {
+            return {
+                statusCode: 504,
+                headers,
+                body: JSON.stringify({ message: 'Database operation timed out' })
             };
         }
 
@@ -109,7 +130,12 @@ exports.handler = async (event, context) => {
     } finally {
         if (client) {
             try {
-                await client.close();
+                await Promise.race([
+                    client.close(),
+                    new Promise((_, reject) => 
+                        setTimeout(() => reject(new Error('Connection close timeout')), 1000)
+                    )
+                ]);
             } catch (e) {
                 log('Error closing MongoDB connection:', e);
             }
