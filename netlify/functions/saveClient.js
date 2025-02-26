@@ -1,32 +1,9 @@
 const jwt = require('jsonwebtoken');
 const { MongoClient } = require('mongodb');
 
-let cachedDb = null;
-
-async function connectToDatabase(uri) {
-    if (cachedDb) {
-        return cachedDb;
-    }
-
-    try {
-        const client = new MongoClient(uri, {
-            useNewUrlParser: true,
-            useUnifiedTopology: true,
-        });
-
-        await client.connect();
-        const db = client.db(process.env.MONGODB_DB_NAME);
-        cachedDb = db;
-        return db;
-    } catch (error) {
-        console.error('MongoDB connection error:', error);
-        throw error;
-    }
-}
-
 exports.handler = async (event, context) => {
-    // Set context.callbackWaitsForEmptyEventLoop to false to prevent timeout
     context.callbackWaitsForEmptyEventLoop = false;
+    let client = null;
 
     const headers = {
         'Access-Control-Allow-Origin': 'https://timmodashboard.netlify.app',
@@ -62,7 +39,10 @@ exports.handler = async (event, context) => {
         const clientData = JSON.parse(event.body);
 
         // Connect to MongoDB
-        const db = await connectToDatabase(process.env.MONGODB_URI);
+        client = new MongoClient(process.env.MONGODB_URI);
+        await client.connect();
+        
+        const db = client.db(process.env.MONGODB_DB_NAME);
         const clientsCollection = db.collection('clients');
         const propertiesCollection = db.collection('properties');
 
@@ -109,7 +89,7 @@ exports.handler = async (event, context) => {
             };
         }
 
-        if (error.name === 'MongoError' || error.name === 'MongoServerError') {
+        if (error.name === 'MongoServerError') {
             return {
                 statusCode: 500,
                 headers,
@@ -120,7 +100,14 @@ exports.handler = async (event, context) => {
         return {
             statusCode: 500,
             headers,
-            body: JSON.stringify({ message: 'Internal server error' })
+            body: JSON.stringify({ 
+                message: 'Internal server error',
+                error: error.message 
+            })
         };
+    } finally {
+        if (client) {
+            await client.close();
+        }
     }
 };
