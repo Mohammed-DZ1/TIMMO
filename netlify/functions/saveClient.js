@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
-const { MongoClient } = require('mongodb');
+const { initializeApp, cert } = require('firebase-admin/app');
+const { getFirestore } = require('firebase-admin/firestore');
 
 // Safe logging function
 const log = (message, data) => {
@@ -12,26 +13,16 @@ const log = (message, data) => {
     }
 };
 
-const MONGODB_TIMEOUT = 5000; // 5 seconds timeout
+// Initialize Firebase Admin
+const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+const app = initializeApp({
+    credential: cert(serviceAccount)
+});
 
-// Helper function to ensure MongoDB URI has all required parameters
-function getMongoUri(uri) {
-    const url = new URL(uri);
-    if (!url.searchParams.has('ssl')) {
-        url.searchParams.set('ssl', 'true');
-    }
-    if (!url.searchParams.has('replicaSet')) {
-        url.searchParams.set('replicaSet', 'atlas-n11wrb-shard-0');
-    }
-    if (!url.searchParams.has('authSource')) {
-        url.searchParams.set('authSource', 'admin');
-    }
-    return url.toString();
-}
+const db = getFirestore();
 
 exports.handler = async (event, context) => {
     context.callbackWaitsForEmptyEventLoop = false;
-    let client = null;
 
     const headers = {
         'Access-Control-Allow-Origin': 'https://timmodashboard.netlify.app',
@@ -66,28 +57,6 @@ exports.handler = async (event, context) => {
         // Parse client data
         const clientData = JSON.parse(event.body);
 
-        // Connect to MongoDB with proper replica set options
-        const uri = getMongoUri(process.env.MONGODB_URI);
-        client = new MongoClient(uri, {
-            useNewUrlParser: true,
-            useUnifiedTopology: true,
-            serverSelectionTimeoutMS: MONGODB_TIMEOUT,
-            socketTimeoutMS: MONGODB_TIMEOUT,
-            connectTimeoutMS: MONGODB_TIMEOUT,
-            maxPoolSize: 1,
-            retryWrites: true,
-            ssl: true,
-            tls: true,
-            tlsAllowInvalidCertificates: false,
-            directConnection: false
-        });
-
-        await client.connect();
-        
-        const db = client.db(process.env.MONGODB_DB_NAME);
-        const clientsCollection = db.collection('clients');
-        const propertiesCollection = db.collection('properties');
-
         // Add metadata
         clientData.createdBy = decoded.email;
         clientData.createdAt = new Date();
@@ -101,44 +70,35 @@ exports.handler = async (event, context) => {
             property.createdAt = new Date();
             property.updatedAt = new Date();
 
-            // Save property with timeout and write concern
-            await Promise.race([
-                propertiesCollection.insertOne(property, { 
-                    writeConcern: { w: 1, wtimeout: 2500 },
-                    readPreference: 'primary'
-                }),
-                new Promise((_, reject) => 
-                    setTimeout(() => reject(new Error('Property save timeout')), MONGODB_TIMEOUT)
-                )
-            ]);
+            // Save property
+            const propertiesRef = db.collection('properties');
+            const propertyDocRef = propertiesRef.doc();
+            await propertyDocRef.set(property);
 
             // Remove property object from client data before saving
             delete clientData.property;
         }
 
-        // Save client with timeout and write concern
-        await Promise.race([
-            clientsCollection.insertOne(clientData, { 
-                writeConcern: { w: 1, wtimeout: 2500 },
-                readPreference: 'primary'
-            }),
-            new Promise((_, reject) => 
-                setTimeout(() => reject(new Error('Client save timeout')), MONGODB_TIMEOUT)
-            )
-        ]);
+        // Save to Firestore
+        const clientsRef = db.collection('clients');
+        const docRef = clientData.clientId ? 
+            clientsRef.doc(clientData.clientId) : 
+            clientsRef.doc();
+
+        await docRef.set(clientData, { merge: true });
 
         return {
             statusCode: 200,
             headers,
             body: JSON.stringify({
                 message: 'Client saved successfully',
-                clientId: clientData.clientId
+                clientId: docRef.id
             })
         };
 
     } catch (error) {
         log('Save client error:', error);
-        
+
         if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
             return {
                 statusCode: 401,
@@ -147,25 +107,16 @@ exports.handler = async (event, context) => {
             };
         }
 
-        if (error.message && (error.message.includes('timeout') || error.name === 'MongoServerSelectionError')) {
+        if (error.code === 'PERMISSION_DENIED') {
             return {
-                statusCode: 504,
+                statusCode: 403,
                 headers,
                 body: JSON.stringify({ 
-                    message: 'Database connection timed out',
-                    error: error.message
+                    message: 'Permission denied - Insufficient privileges to save client'
                 })
             };
         }
 
-        if (error.name === 'MongoServerError') {
-            return {
-                statusCode: 500,
-                headers,
-                body: JSON.stringify({ message: 'Database error - Failed to save client' })
-            };
-        }
-        
         return {
             statusCode: 500,
             headers,
@@ -174,18 +125,5 @@ exports.handler = async (event, context) => {
                 error: error.message || 'Unknown error'
             })
         };
-    } finally {
-        if (client) {
-            try {
-                await Promise.race([
-                    client.close(true),
-                    new Promise((_, reject) => 
-                        setTimeout(() => reject(new Error('Connection close timeout')), 1000)
-                    )
-                ]);
-            } catch (e) {
-                log('Error closing MongoDB connection:', e);
-            }
-        }
     }
 };
