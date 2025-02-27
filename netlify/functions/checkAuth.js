@@ -1,94 +1,93 @@
 const jwt = require('jsonwebtoken');
+const { initializeApp, cert } = require('firebase-admin/app');
+const { getFirestore } = require('firebase-admin/firestore');
 
-const checkAuth = async (event) => {
+// Initialize Firebase Admin
+const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+const app = initializeApp({
+    credential: cert(serviceAccount)
+}, 'checkAuth');
+
+const db = getFirestore();
+
+exports.handler = async (event) => {
+    // Handle CORS preflight
+    if (event.httpMethod === 'OPTIONS') {
+        return {
+            statusCode: 200,
+            headers: {
+                'Access-Control-Allow-Origin': process.env.SITE_URL || '*',
+                'Access-Control-Allow-Methods': 'GET, OPTIONS',
+                'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+                'Access-Control-Allow-Credentials': 'true'
+            },
+            body: ''
+        };
+    }
+
+    // Allow only GET requests
+    if (event.httpMethod !== 'GET') {
+        return {
+            statusCode: 405,
+            headers: {
+                'Access-Control-Allow-Origin': process.env.SITE_URL || '*',
+                'Access-Control-Allow-Credentials': 'true'
+            },
+            body: JSON.stringify({ message: 'Method Not Allowed' })
+        };
+    }
+
     try {
-        // Handle Preflight CORS requests
-        if (event.httpMethod === 'OPTIONS') {
-            return {
-                statusCode: 200,
-                headers: {
-                    'Access-Control-Allow-Origin': 'https://timmodashboard.netlify.app',
-                    'Access-Control-Allow-Methods': 'GET, OPTIONS',
-                    'Access-Control-Allow-Headers': 'Content-Type, Cookie',
-                    'Access-Control-Allow-Credentials': 'true',
-                },
-                body: '',
-            };
+        // Get token from Authorization header
+        const token = event.headers.authorization?.split(' ')[1];
+        if (!token) {
+            throw new Error('No token provided');
         }
 
-        // Allow only GET requests
-        if (event.httpMethod !== 'GET') {
-            return {
-                statusCode: 405,
-                headers: {
-                    'Access-Control-Allow-Origin': 'https://timmodashboard.netlify.app',
-                    'Access-Control-Allow-Credentials': 'true',
-                },
-                body: JSON.stringify({ message: 'Method Not Allowed' }),
-            };
+        // Verify token
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+        // Get user from Firestore
+        const userRef = db.collection('users').doc(decoded.id);
+        const userDoc = await userRef.get();
+
+        if (!userDoc.exists) {
+            throw new Error('User not found');
         }
 
-        // Get the token from cookies
-        const cookies = event.headers.cookie || '';
-        const tokenCookie = cookies.split(';').find(c => c.trim().startsWith('authToken='));
-        
-        if (!tokenCookie) {
-            return {
-                statusCode: 401,
-                headers: {
-                    'Access-Control-Allow-Origin': 'https://timmodashboard.netlify.app',
-                    'Access-Control-Allow-Credentials': 'true',
-                },
-                body: JSON.stringify({ message: 'No authentication token' }),
-            };
-        }
-
-        const token = tokenCookie.split('=')[1].trim();
-        const secretKey = process.env.JWT_SECRET;
-
-        if (!secretKey) {
-            console.error("Missing JWT_SECRET environment variable");
-            return {
-                statusCode: 500,
-                headers: {
-                    'Access-Control-Allow-Origin': 'https://timmodashboard.netlify.app',
-                    'Access-Control-Allow-Credentials': 'true',
-                },
-                body: JSON.stringify({ message: 'Server configuration error' }),
-            };
-        }
-
-        // Verify the token
-        const decoded = jwt.verify(token, secretKey);
+        const userData = userDoc.data();
 
         return {
             statusCode: 200,
             headers: {
-                'Access-Control-Allow-Origin': 'https://timmodashboard.netlify.app',
-                'Access-Control-Allow-Credentials': 'true',
                 'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': process.env.SITE_URL || '*',
+                'Access-Control-Allow-Credentials': 'true'
             },
             body: JSON.stringify({
-                message: 'Authentication valid',
+                isAuthenticated: true,
                 user: {
-                    email: decoded.email,
-                    role: decoded.role
+                    id: userDoc.id,
+                    email: userData.email,
+                    name: userData.name,
+                    role: userData.role,
+                    permissions: userData.permissions
                 }
-            }),
+            })
         };
     } catch (error) {
         console.error('Auth check error:', error);
         return {
-            statusCode: 401,
+            statusCode: error.message === 'No token provided' ? 401 : 500,
             headers: {
-                'Access-Control-Allow-Origin': 'https://timmodashboard.netlify.app',
-                'Access-Control-Allow-Credentials': 'true',
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': process.env.SITE_URL || '*',
+                'Access-Control-Allow-Credentials': 'true'
             },
-            body: JSON.stringify({ message: 'Invalid or expired token' }),
+            body: JSON.stringify({ 
+                isAuthenticated: false,
+                error: error.message 
+            })
         };
     }
-};
-
-exports.handler = async (event) => {
-    return checkAuth(event);
 };
