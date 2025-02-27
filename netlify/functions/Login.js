@@ -1,106 +1,134 @@
 const jwt = require('jsonwebtoken');
+const { initializeApp, cert } = require('firebase-admin/app');
+const { getFirestore } = require('firebase-admin/firestore');
+const bcrypt = require('bcryptjs');
+
+// Initialize Firebase Admin
+const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+const app = initializeApp({
+    credential: cert(serviceAccount)
+}, 'login');
+
+const db = getFirestore();
 
 exports.handler = async (event) => {
+    // Handle Preflight CORS requests
+    if (event.httpMethod === 'OPTIONS') {
+        return {
+            statusCode: 200,
+            headers: {
+                'Access-Control-Allow-Origin': process.env.SITE_URL || '*',
+                'Access-Control-Allow-Methods': 'POST, OPTIONS',
+                'Access-Control-Allow-Headers': 'Content-Type',
+                'Access-Control-Allow-Credentials': 'true'
+            },
+            body: ''
+        };
+    }
+
+    // Allow only POST requests
+    if (event.httpMethod !== 'POST') {
+        return {
+            statusCode: 405,
+            headers: {
+                'Access-Control-Allow-Origin': process.env.SITE_URL || '*',
+                'Access-Control-Allow-Credentials': 'true'
+            },
+            body: JSON.stringify({ message: 'Method Not Allowed' })
+        };
+    }
+
     try {
-        // Handle Preflight CORS requests
-        if (event.httpMethod === 'OPTIONS') {
-            return {
-                statusCode: 200,
-                headers: {
-                    'Access-Control-Allow-Origin': 'https://timmodashboard.netlify.app',
-                    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-                    'Access-Control-Allow-Headers': 'Content-Type',
-                    'Access-Control-Allow-Credentials': 'true',
-                },
-                body: '',
-            };
-        }
-
-        // Allow only POST requests
-        if (event.httpMethod !== 'POST') {
-            return {
-                statusCode: 405,
-                headers: {
-                    'Access-Control-Allow-Origin': 'https://timmodashboard.netlify.app',
-                    'Access-Control-Allow-Credentials': 'true',
-                },
-                body: JSON.stringify({ message: 'Method Not Allowed' }),
-            };
-        }
-
         const { email, password } = JSON.parse(event.body);
 
-        // Get environment variables
-        const superAdminEmail = process.env.SUPER_ADMIN_EMAIL;
-        const superAdminPassword = process.env.SUPER_ADMIN_PASSWORD;
-        const secretKey = process.env.JWT_SECRET;
-
-        // Ensure environment variables exist
-        if (!superAdminEmail || !superAdminPassword || !secretKey) {
-            console.error("Missing environment variables");
+        // Input validation
+        if (!email || !password) {
             return {
-                statusCode: 500,
+                statusCode: 400,
                 headers: {
-                    'Access-Control-Allow-Origin': 'https://timmodashboard.netlify.app',
-                    'Access-Control-Allow-Credentials': 'true',
-                },
-                body: JSON.stringify({ message: 'Server configuration error' }),
-            };
-        }
-
-        // Validate Credentials
-        if (email === superAdminEmail && password === superAdminPassword) {
-            const token = jwt.sign(
-                { email, role: 'Super Admin' },
-                secretKey,
-                { expiresIn: '24h' }
-            );
-
-            // Set secure cookie options
-            const cookieOptions = [
-                `authToken=${token}`,
-                'Path=/',
-                'HttpOnly',
-                'Secure',
-                'SameSite=Strict'
-            ].join('; ');
-
-            return {
-                statusCode: 200,
-                headers: {
-                    'Set-Cookie': cookieOptions,
-                    'Access-Control-Allow-Origin': 'https://timmodashboard.netlify.app',
-                    'Access-Control-Allow-Credentials': 'true',
-                    'Cache-Control': 'no-cache',
                     'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': process.env.SITE_URL || '*',
+                    'Access-Control-Allow-Credentials': 'true'
                 },
-                body: JSON.stringify({
-                    message: 'Login successful',
-                    user: {
-                        email,
-                        role: 'Super Admin'
-                    }
-                }),
+                body: JSON.stringify({ message: 'Email and password are required' })
             };
         }
 
-        return {
-            statusCode: 401,
-            headers: {
-                'Access-Control-Allow-Origin': 'https://timmodashboard.netlify.app',
-                'Access-Control-Allow-Credentials': 'true',
+        // Get user from Firestore
+        const usersRef = db.collection('users');
+        const userQuery = await usersRef.where('email', '==', email.toLowerCase()).limit(1).get();
+
+        if (userQuery.empty) {
+            return {
+                statusCode: 401,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': process.env.SITE_URL || '*',
+                    'Access-Control-Allow-Credentials': 'true'
+                },
+                body: JSON.stringify({ message: 'Invalid credentials' })
+            };
+        }
+
+        const userDoc = userQuery.docs[0];
+        const userData = userDoc.data();
+
+        // Verify password
+        const isValidPassword = await bcrypt.compare(password, userData.password);
+
+        if (!isValidPassword) {
+            return {
+                statusCode: 401,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': process.env.SITE_URL || '*',
+                    'Access-Control-Allow-Credentials': 'true'
+                },
+                body: JSON.stringify({ message: 'Invalid credentials' })
+            };
+        }
+
+        // Generate JWT token
+        const token = jwt.sign(
+            { 
+                email: userData.email,
+                role: userData.role,
+                name: userData.name,
+                id: userDoc.id
             },
-            body: JSON.stringify({ message: 'Invalid credentials' }),
+            process.env.JWT_SECRET,
+            { expiresIn: '24h' }
+        );
+
+        // Return success response
+        return {
+            statusCode: 200,
+            headers: {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': process.env.SITE_URL || '*',
+                'Access-Control-Allow-Credentials': 'true'
+            },
+            body: JSON.stringify({
+                token,
+                user: {
+                    id: userDoc.id,
+                    email: userData.email,
+                    name: userData.name,
+                    role: userData.role,
+                    permissions: userData.permissions
+                }
+            })
         };
     } catch (error) {
         console.error('Login error:', error);
         return {
             statusCode: 500,
             headers: {
-                'Access-Control-Allow-Origin': 'https://timmodashboard.netlify.app',
-                'Access-Control-Allow-Credentials': 'true',
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': process.env.SITE_URL || '*',
+                'Access-Control-Allow-Credentials': 'true'
             },
-            body: JSON.stringify({ message: 'Internal server error' }),
+            body: JSON.stringify({ message: 'Internal server error' })
         };
     }
 };
