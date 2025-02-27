@@ -1,153 +1,154 @@
 const jwt = require('jsonwebtoken');
+const { initializeApp, cert } = require('firebase-admin/app');
+const { getFirestore } = require('firebase-admin/firestore');
 
-// Mock data store
-const dataStore = {
-    activeProperties: 120,
-    totalAgents: 45,
-    revenueGrowth: 250000,
-    averagePrice: 15000000,
-    averageDaysOnMarket: 45,
-    conversionRate: 68,
-    agentPerformance: [
-        { name: "Agent A", values: [10, 12, 8, 14, 9, 15], label: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"], color: "#4CAF50" },
-        { name: "Agent B", values: [8, 9, 11, 10, 12, 13], label: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"], color: "#FFC107" },
-        { name: "Agent C", values: [12, 10, 9, 13, 14, 11], label: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"], color: "#FF5733" },
-    ],
-    revenueHistory: [
-        { name: "Revenue", values: [50000, 60000, 55000, 70000, 65000, 75000], label: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"], color: "#3498DB" }
-    ],
-    propertyDistribution: {
-        forSale: [
-            { label: "Apartments", value: 30 },
-            { label: "Villas", value: 15 },
-            { label: "Offices", value: 10 },
-        ],
-        forRent: [
-            { label: "Apartments", value: 40 },
-            { label: "Villas", value: 12 },
-            { label: "Offices", value: 8 },
-        ],
-        both: [
-            { label: "Apartments", value: 10 },
-            { label: "Villas", value: 5 },
-            { label: "Offices", value: 3 },
-        ],
-    },
-    propertyTypes: [
-        { label: "Apartments", value: 80 },
-        { label: "Villas", value: 32 },
-        { label: "Offices", value: 21 },
-        { label: "Land", value: 15 },
-        { label: "Commercial", value: 25 }
-    ],
-    topPerformingAreas: [
-        { name: "Hydra", values: [12, 15, 14, 18, 16, 20], label: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"], color: "#8E44AD" },
-        { name: "Dely Ibrahim", values: [10, 12, 11, 14, 15, 16], label: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"], color: "#2ECC71" },
-        { name: "Bab Ezzouar", values: [8, 10, 12, 11, 13, 14], label: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"], color: "#E74C3C" }
-    ]
+// Initialize Firebase Admin
+const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+const app = initializeApp({
+    credential: cert(serviceAccount)
+}, 'getDashboardStats');
+
+const db = getFirestore();
+
+const filterDataByDateRange = async (startDate, endDate) => {
+    try {
+        // Get properties within date range
+        const propertiesRef = db.collection('properties');
+        const propertiesSnapshot = await propertiesRef
+            .where('createdAt', '>=', startDate)
+            .where('createdAt', '<=', endDate)
+            .get();
+
+        // Get agents
+        const agentsRef = db.collection('agents');
+        const agentsSnapshot = await agentsRef.get();
+
+        // Calculate statistics
+        const properties = [];
+        propertiesSnapshot.forEach(doc => properties.push(doc.data()));
+
+        const agents = [];
+        agentsSnapshot.forEach(doc => agents.push(doc.data()));
+
+        const activeProperties = properties.filter(p => p.status === 'active').length;
+        const totalAgents = agents.length;
+        
+        // Calculate revenue growth (assuming price field in properties)
+        const revenue = properties.reduce((sum, p) => sum + (p.price || 0), 0);
+        
+        // Calculate average price
+        const averagePrice = properties.length > 0 
+            ? revenue / properties.length 
+            : 0;
+
+        // Calculate average days on market
+        const totalDays = properties.reduce((sum, p) => {
+            const listedDate = new Date(p.listedDate);
+            const soldDate = p.status === 'sold' ? new Date(p.soldDate) : new Date();
+            return sum + Math.floor((soldDate - listedDate) / (1000 * 60 * 60 * 24));
+        }, 0);
+        const averageDaysOnMarket = properties.length > 0 
+            ? Math.round(totalDays / properties.length)
+            : 0;
+
+        // Calculate conversion rate
+        const soldProperties = properties.filter(p => p.status === 'sold').length;
+        const conversionRate = properties.length > 0
+            ? Math.round((soldProperties / properties.length) * 100)
+            : 0;
+
+        return {
+            activeProperties,
+            totalAgents,
+            revenueGrowth: revenue,
+            averagePrice,
+            averageDaysOnMarket,
+            conversionRate
+        };
+    } catch (error) {
+        console.error('Error filtering data:', error);
+        throw error;
+    }
 };
 
-const filterDataByDateRange = (data, startDate, endDate) => {
-    if (!startDate || !endDate) return data;
+const filterDataByType = async (filter) => {
+    try {
+        // Get properties
+        const propertiesRef = db.collection('properties');
+        const propertiesSnapshot = await propertiesRef.get();
 
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    const monthDiff = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
-    
-    const filterTimeSeriesData = (series) => {
-        return series.map(item => ({
-            ...item,
-            values: item.values.slice(-monthDiff),
-            label: item.label.slice(-monthDiff)
-        }));
-    };
+        // Calculate statistics
+        const properties = [];
+        propertiesSnapshot.forEach(doc => properties.push(doc.data()));
 
-    return {
-        ...data,
-        agentPerformance: filterTimeSeriesData(data.agentPerformance),
-        revenueHistory: filterTimeSeriesData(data.revenueHistory),
-        topPerformingAreas: filterTimeSeriesData(data.topPerformingAreas)
-    };
-};
+        const activeProperties = properties.filter(p => p.status === 'active' && p.type === filter).length;
 
-const filterDataByType = (data, filter) => {
-    if (filter === 'all') return data;
-
-    const filterKey = filter === 'sale' ? 'forSale' : 'forRent';
-    const filteredDistribution = {
-        [filterKey]: data.propertyDistribution[filterKey]
-    };
-
-    return {
-        ...data,
-        activeProperties: data.propertyDistribution[filterKey].reduce((sum, item) => sum + item.value, 0),
-        propertyDistribution: filteredDistribution
-    };
+        return {
+            activeProperties
+        };
+    } catch (error) {
+        console.error('Error filtering data:', error);
+        throw error;
+    }
 };
 
 exports.handler = async (event, context) => {
-    const headers = {
-        'Access-Control-Allow-Origin': 'https://timmodashboard.netlify.app',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-        'Access-Control-Allow-Credentials': 'true'
-    };
-
-    // Handle preflight requests
+    // Handle CORS preflight
     if (event.httpMethod === 'OPTIONS') {
-        return { statusCode: 200, headers };
+        return {
+            statusCode: 200,
+            headers: {
+                'Access-Control-Allow-Origin': process.env.SITE_URL || '*',
+                'Access-Control-Allow-Methods': 'GET, OPTIONS',
+                'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+                'Access-Control-Allow-Credentials': 'true'
+            },
+            body: ''
+        };
     }
 
     try {
-        // Get token from cookie
-        const token = event.headers.cookie?.split(';')
-            .find(c => c.trim().startsWith('token='))
-            ?.split('=')[1];
-
+        // Verify JWT token
+        const token = event.headers.authorization?.split(' ')[1];
         if (!token) {
-            return {
-                statusCode: 401,
-                headers,
-                body: JSON.stringify({ message: 'Unauthorized - No token provided' })
-            };
+            throw new Error('No token provided');
         }
 
-        // Verify token
-        let user;
-        try {
-            user = jwt.verify(token, process.env.JWT_SECRET);
-        } catch (err) {
-            return {
-                statusCode: 401,
-                headers,
-                body: JSON.stringify({ message: 'Unauthorized - Invalid token' })
-            };
-        }
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
         // Get query parameters
-        const { startDate, endDate, filter } = event.queryStringParameters || {};
-        
-        // Filter data based on parameters
-        let filteredData = { ...dataStore };
-        if (startDate && endDate) {
-            filteredData = filterDataByDateRange(filteredData, startDate, endDate);
-        }
+        const queryParams = event.queryStringParameters || {};
+        const startDate = queryParams.startDate ? new Date(queryParams.startDate) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000); // Default to last 30 days
+        const endDate = queryParams.endDate ? new Date(queryParams.endDate) : new Date();
+        const filter = queryParams.filter;
+
+        // Get filtered data
+        let stats;
         if (filter) {
-            filteredData = filterDataByType(filteredData, filter);
+            stats = await filterDataByType(filter);
+        } else {
+            stats = await filterDataByDateRange(startDate, endDate);
         }
 
-        // Return filtered data
         return {
             statusCode: 200,
-            headers,
-            body: JSON.stringify(filteredData)
+            headers: {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': process.env.SITE_URL || '*',
+                'Access-Control-Allow-Credentials': 'true'
+            },
+            body: JSON.stringify(stats)
         };
     } catch (error) {
         console.error('Dashboard stats error:', error);
         return {
-            statusCode: 500,
-            headers,
-            body: JSON.stringify({ message: 'Internal server error' })
+            statusCode: error.message === 'No token provided' ? 401 : 500,
+            headers: {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': process.env.SITE_URL || '*',
+                'Access-Control-Allow-Credentials': 'true'
+            },
+            body: JSON.stringify({ error: error.message })
         };
     }
 };
