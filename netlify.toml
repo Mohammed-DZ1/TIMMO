@@ -6,7 +6,8 @@
 [functions]
   directory = "netlify/functions"
   node_bundler = "esbuild"
-  included_files = ["netlify/functions/**/*"]
+  included_files = ["netlify/functions/config/serviceAccount.json"]
+  external_node_modules = ["firebase-admin"]
 
 [dev]
   command = "npm run start"
