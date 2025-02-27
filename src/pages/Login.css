@@ -25,11 +25,11 @@
   height: 450px;
   background: repeating-conic-gradient(
     from var(--a),
-    #3498db 0%,    /* TIMMO primary blue */
-    #3498db 5%,
+    #ffd700 0%,    /* Gold */
+    #ffd700 5%,
     transparent 5%,
     transparent 40%,
-    #3498db 50%
+    #ffd700 50%
   );
   filter: drop-shadow(0 15px 50px rgba(0, 0, 0, 0.5));
   border-radius: 20px;
@@ -43,7 +43,7 @@
 .box:hover {
   width: 420px;
   height: 470px;
-  filter: drop-shadow(0 15px 70px rgba(52, 152, 219, 0.2));  /* TIMMO blue shadow */
+  filter: drop-shadow(0 15px 70px rgba(255, 215, 0, 0.2));  /* Gold shadow */
 }
 
 @keyframes rotating {
@@ -84,9 +84,9 @@
 }
 
 .loginBx h2 i {
-  color: #3498db;  /* TIMMO blue */
+  color: #ffd700;  /* Gold */
   margin: 0 10px;
-  text-shadow: 0 0 10px #3498db;  /* TIMMO blue glow */
+  text-shadow: 0 0 10px #ffd700;  /* Gold glow */
 }
 
 .loginBx input {
@@ -104,7 +104,7 @@
 }
 
 .loginBx input:focus {
-  box-shadow: 0 0 20px rgba(52, 152, 219, 0.2);  /* TIMMO blue glow */
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.2);  /* Gold glow */
 }
 
 .loginBx input::placeholder {
@@ -115,27 +115,28 @@
   position: relative;
   width: 100%;
   padding: 15px;
-  background: #3498db;  /* TIMMO blue */
+  background: #ffd700;  /* Gold */
   border: none;
   outline: none;
   border-radius: 10px;
   margin-top: 20px;
-  color: #fff;
+  color: #1a1a1f;  /* Dark text for better contrast on gold */
   font-size: 1.1em;
   letter-spacing: 1px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   transition: 0.5s;
 }
 
 .submit-btn:hover {
-  background: #2980b9;  /* Darker TIMMO blue */
-  box-shadow: 0 0 20px rgba(52, 152, 219, 0.4);  /* TIMMO blue glow */
+  background: #ffed4a;  /* Lighter gold */
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);  /* Gold glow */
 }
 
 .submit-btn:disabled {
   background: #666;
   cursor: not-allowed;
+  color: #fff;
 }
 
 .error-message {
