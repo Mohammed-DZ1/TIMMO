@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next'; // Import translation hook
-import { v4 as uuidv4 } from 'uuid';  // For generating unique IDs
+import { useTranslation } from 'react-i18next';
+import { v4 as uuidv4 } from 'uuid';
+import useAuth from '../hooks/useAuth';
 
 const RoleManagementForm = ({ currentUserRole }) => {
-    const { t } = useTranslation(); // Hook for translations
+    const { t } = useTranslation();
+    const { user } = useAuth();
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [role, setRole] = useState('Agent');  // Default role
+    const [role, setRole] = useState('Agent');
     const [sidebarLinks, setSidebarLinks] = useState([]);
     const [permissions, setPermissions] = useState({
         sidebarLinks: {},
@@ -36,112 +38,119 @@ const RoleManagementForm = ({ currentUserRole }) => {
     useEffect(() => {
         const fetchUsers = async () => {
             try {
-                const response = await fetch('https://timmodashboard.netlify.app/.netlify/functions/getUsers');
+                const response = await fetch('/.netlify/functions/getUsers', {
+                    headers: {
+                        'Authorization': `Bearer ${await user.getIdToken()}`
+                    }
+                });
+                if (!response.ok) throw new Error('Failed to fetch users');
                 const data = await response.json();
                 setUsers(data);
             } catch (error) {
                 console.error('Error fetching users:', error);
+                setError(t('errorFetchingUsers'));
             }
         };
 
         const fetchSidebarLinks = async () => {
             try {
-                const response = await fetch('https://timmodashboard.netlify.app/.netlify/functions/getSidebarLinks');
+                const response = await fetch('/.netlify/functions/getSidebarLinks', {
+                    headers: {
+                        'Authorization': `Bearer ${await user.getIdToken()}`
+                    }
+                });
+                if (!response.ok) throw new Error('Failed to fetch sidebar links');
                 const data = await response.json();
-                const sidebarPermissions = data.links.reduce((acc, link) => {
-                    acc[link.path] = false;  
+                setSidebarLinks(data);
+                
+                // Initialize sidebar permissions
+                const sidebarPermissions = data.reduce((acc, link) => {
+                    acc[link.path] = false;
                     return acc;
                 }, {});
-                setSidebarLinks(data.links);
-                setPermissions(prev => ({ ...prev, sidebarLinks: sidebarPermissions }));
+                setPermissions(prev => ({
+                    ...prev,
+                    sidebarLinks: sidebarPermissions
+                }));
             } catch (error) {
                 console.error('Error fetching sidebar links:', error);
+                setError(t('errorFetchingSidebarLinks'));
             }
         };
 
-        fetchUsers();
-        fetchSidebarLinks();
-    }, []);
+        if (user) {
+            fetchUsers();
+            fetchSidebarLinks();
+        }
+    }, [user, t]);
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setError('');
+
+        try {
+            const response = await fetch('/.netlify/functions/addOrUpdateUser', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${await user.getIdToken()}`
+                },
+                body: JSON.stringify({
+                    id: uuidv4(),
+                    name,
+                    email,
+                    password,
+                    role,
+                    permissions
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to create/update user');
+            }
+
+            // Reset form
+            setName('');
+            setEmail('');
+            setPassword('');
+            setRole('Agent');
+            setPermissions({
+                sidebarLinks: {},
+                buttons: {
+                    addUser: false,
+                    editUser: false,
+                    deleteUser: false,
+                    addProperty: false,
+                    editProperty: false,
+                    deleteProperty: false,
+                    addClient: false,
+                    editClient: false,
+                    deleteClient: false
+                },
+                forms: {
+                    clientForm: false,
+                    agentForm: false,
+                    propertyForm: false
+                }
+            });
+
+            // Refresh users list
+            const updatedUsersResponse = await fetch('/.netlify/functions/getUsers', {
+                headers: {
+                    'Authorization': `Bearer ${await user.getIdToken()}`
+                }
+            });
+            const updatedUsers = await updatedUsersResponse.json();
+            setUsers(updatedUsers);
+        } catch (error) {
+            console.error('Error creating/updating user:', error);
+            setError(t('errorCreatingUser'));
+        }
+    };
 
     const validateEmail = (email) => {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         return emailRegex.test(email);
-    };
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-
-        if (!name || !email || !password) {
-            setError(t('errorAllFieldsRequired'));
-            return;
-        }
-
-        if (!validateEmail(email)) {
-            setError(t('errorInvalidEmail'));
-            return;
-        }
-
-        if (role === 'Super Admin' && currentUserRole !== 'Super Admin') {
-            setError(t('errorSuperAdminOnly'));
-            return;
-        }
-
-        const newUser = {
-            id: uuidv4(),
-            name,
-            email,
-            password,
-            role,
-            permissions
-        };
-
-        try {
-            const response = await fetch('https://timmodashboard.netlify.app/.netlify/functions/addOrUpdateUser', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(newUser),
-            });
-
-            if (response.ok) {
-                const updatedUsers = await response.json();
-                setUsers(updatedUsers);
-                setError('');
-                resetForm();
-            } else {
-                setError(t('errorAddUserFailed'));
-            }
-        } catch (error) {
-            console.error('Error adding user:', error);
-        }
-    };
-
-    const resetForm = () => {
-        setName('');
-        setEmail('');
-        setPassword('');
-        setRole('Agent');
-        setPermissions({
-            sidebarLinks: sidebarLinks.reduce((acc, link) => {
-                acc[link.path] = false; 
-                return acc;
-            }, {}),
-            buttons: {
-                addUser: false,
-                editUser: false,
-                deleteUser: false,
-                addProperty: false,
-                editProperty: false,
-                deleteProperty: false,
-                addClient: false,
-                editClient: false,
-                deleteClient: false
-            },
-            forms: {
-                clientForm: false,
-                agentForm: false,
-                propertyForm: false
-            }
-        });
     };
 
     const handlePermissionChange = (category, key) => {
@@ -155,11 +164,13 @@ const RoleManagementForm = ({ currentUserRole }) => {
     };
 
     return (
-        <div className="bg-white p-6 rounded shadow-md w-full max-w-lg">
-            <h2 className="text-2xl font-bold mb-4">{t('addOrManageUsers')}</h2>
-
-            {error && <p className="text-red-500 mb-4">{error}</p>}
-
+        <div className="bg-white rounded-lg shadow p-6">
+            <h2 className="text-2xl font-bold mb-6">{t('roleManagement')}</h2>
+            {error && (
+                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+                    {error}
+                </div>
+            )}
             <form onSubmit={handleSubmit}>
                 <div className="mb-4">
                     <label className="block text-gray-700">{t('name')}</label>
