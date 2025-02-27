@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Initialize Super Admin</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        pre {
+            background: #f8f8f8;
+            padding: 15px;
+            border-radius: 5px;
+            white-space: pre-wrap;
+            overflow-x: auto;
+            border: 1px solid #ddd;
+        }
+        .error {
+            color: #d32f2f;
+            background-color: #ffebee;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .success {
+            color: #388e3c;
+            background-color: #e8f5e9;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .loading {
+            color: #1976d2;
+            background-color: #e3f2fd;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Initialize Super Admin</h2>
+        <button onclick="initializeSuperAdmin()" id="initButton">Create Super Admin</button>
+        <div id="status"></div>
+        <h3>Response:</h3>
+        <pre id="result">No response yet</pre>
+    </div>
+
+    <script>
+        async function initializeSuperAdmin() {
+            const status = document.getElementById('status');
+            const result = document.getElementById('result');
+            const button = document.getElementById('initButton');
+            
+            try {
+                status.innerHTML = '<div class="loading">Making request...</div>';
+                button.disabled = true;
+                
+                const response = await fetch('https://timmodashboard.netlify.app/.netlify/functions/initializeSuperAdmin', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Origin': window.location.origin
+                    },
+                    credentials: 'same-origin'
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    status.innerHTML = '<div class="success">✅ Request successful!</div>';
+                } else {
+                    status.innerHTML = '<div class="error">❌ Request failed</div>';
+                }
+                
+                result.textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                status.innerHTML = '<div class="error">❌ Error occurred</div>';
+                result.textContent = 'Error: ' + error.message;
+            } finally {
+                button.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
