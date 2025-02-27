@@ -1,0 +1,163 @@
+@import url("https://fonts.googleapis.com/css?family=Poppins:200,300,400,500,600,700,800,900&display=swap");
+@import url("https://use.fontawesome.com/releases/v6.5.1/css/all.css");
+
+.login-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background: #1a1a1f;
+}
+
+* {
+  font-family: "Poppins", sans-serif;
+}
+
+@property --a {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+.box {
+  position: relative;
+  width: 400px;
+  height: 450px;
+  background: repeating-conic-gradient(
+    from var(--a),
+    #3498db 0%,    /* TIMMO primary blue */
+    #3498db 5%,
+    transparent 5%,
+    transparent 40%,
+    #3498db 50%
+  );
+  filter: drop-shadow(0 15px 50px rgba(0, 0, 0, 0.5));
+  border-radius: 20px;
+  animation: rotating 4s linear infinite;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: 0.5s;
+}
+
+.box:hover {
+  width: 420px;
+  height: 470px;
+  filter: drop-shadow(0 15px 70px rgba(52, 152, 219, 0.2));  /* TIMMO blue shadow */
+}
+
+@keyframes rotating {
+  0% {
+    --a: 0deg;
+  }
+  100% {
+    --a: 360deg;
+  }
+}
+
+.login {
+  position: absolute;
+  width: 93%;
+  height: 93%;
+  background: #1a1a1f;
+  border-radius: 15px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.loginBx {
+  position: relative;
+  width: 85%;
+  padding: 40px 0;
+}
+
+.loginBx h2 {
+  color: #fff;
+  font-weight: 600;
+  font-size: 2em;
+  width: 100%;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin-bottom: 40px;
+}
+
+.loginBx h2 i {
+  color: #3498db;  /* TIMMO blue */
+  margin: 0 10px;
+  text-shadow: 0 0 10px #3498db;  /* TIMMO blue glow */
+}
+
+.loginBx input {
+  width: 100%;
+  padding: 15px;
+  background: #222;
+  border: none;
+  outline: none;
+  border-radius: 10px;
+  margin: 10px 0;
+  color: #fff;
+  font-size: 1.1em;
+  letter-spacing: 1px;
+  transition: 0.5s;
+}
+
+.loginBx input:focus {
+  box-shadow: 0 0 20px rgba(52, 152, 219, 0.2);  /* TIMMO blue glow */
+}
+
+.loginBx input::placeholder {
+  color: #999;
+}
+
+.submit-btn {
+  position: relative;
+  width: 100%;
+  padding: 15px;
+  background: #3498db;  /* TIMMO blue */
+  border: none;
+  outline: none;
+  border-radius: 10px;
+  margin-top: 20px;
+  color: #fff;
+  font-size: 1.1em;
+  letter-spacing: 1px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: 0.5s;
+}
+
+.submit-btn:hover {
+  background: #2980b9;  /* Darker TIMMO blue */
+  box-shadow: 0 0 20px rgba(52, 152, 219, 0.4);  /* TIMMO blue glow */
+}
+
+.submit-btn:disabled {
+  background: #666;
+  cursor: not-allowed;
+}
+
+.error-message {
+  color: #e74c3c;  /* Error red */
+  text-align: center;
+  margin-top: 15px;
+  font-size: 0.9em;
+}
+
+/* Responsive Design */
+@media (max-width: 500px) {
+  .box {
+    width: 95%;
+    height: 400px;
+  }
+  
+  .box:hover {
+    width: 95%;
+    height: 420px;
+  }
+  
+  .loginBx h2 {
+    font-size: 1.5em;
+  }
+}
