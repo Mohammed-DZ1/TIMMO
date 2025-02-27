@@ -34,36 +34,35 @@ const Dashboard = () => {
                     filter: selectedFilter
                 });
 
-                const response = await fetch(`https://timmodashboard.netlify.app/.netlify/functions/getDashboardStats?${queryParams}`, {
+                const response = await fetch(`/.netlify/functions/getDashboardStats?${queryParams}`, {
                     method: 'GET',
-                    credentials: 'include',
                     headers: {
-                        'Accept': 'application/json',
+                        'Authorization': `Bearer ${await user.getIdToken()}`,
                         'Content-Type': 'application/json'
                     }
                 });
 
                 if (!response.ok) {
-                    throw new Error('Failed to fetch dashboard data');
+                    throw new Error(t('dashboard.error.fetchFailed') || 'Failed to fetch dashboard data');
                 }
 
                 const data = await response.json();
                 setDashboardData(data);
             } catch (err) {
                 console.error('Error fetching dashboard data:', err);
-                setError(err.message);
+                setError(t('dashboard.error.message', { error: err.message }) || err.message);
             } finally {
                 setLoading(false);
             }
         };
 
         fetchDashboardData();
-    }, [user, dateRange, selectedFilter]);
+    }, [user, dateRange.start, dateRange.end, selectedFilter, t]);
 
     const filterOptions = [
-        { value: 'all', label: t('dashboard.filters.all') || 'All Properties' },
-        { value: 'sale', label: t('dashboard.filters.sale') || 'For Sale' },
-        { value: 'rent', label: t('dashboard.filters.rent') || 'For Rent' }
+        { value: 'all', label: t('dashboard.filters.all') },
+        { value: 'sale', label: t('dashboard.filters.sale') },
+        { value: 'rent', label: t('dashboard.filters.rent') }
     ];
 
     if (loading) {
@@ -86,7 +85,7 @@ const Dashboard = () => {
                         </div>
                         <div className="ml-3">
                             <h3 className="text-sm font-medium text-red-800">
-                                {t('dashboard.error.title') || 'Error Loading Dashboard'}
+                                {t('dashboard.error.title')}
                             </h3>
                             <p className="mt-2 text-sm text-red-700">{error}</p>
                         </div>
@@ -108,10 +107,10 @@ const Dashboard = () => {
                         </div>
                         <div className="ml-3">
                             <h3 className="text-sm font-medium text-yellow-800">
-                                {t('dashboard.noData.title') || 'No Data Available'}
+                                {t('dashboard.noData.title')}
                             </h3>
                             <p className="mt-2 text-sm text-yellow-700">
-                                {t('dashboard.noData.message') || 'No dashboard data is currently available.'}
+                                {t('dashboard.noData.message')}
                             </p>
                         </div>
                     </div>
@@ -124,75 +123,104 @@ const Dashboard = () => {
         <div className="p-6">
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-2xl font-semibold text-gray-900">
-                    {t('dashboard.title') || 'Dashboard'}
+                    {t('dashboard.title')}
                 </h1>
                 <div className="flex space-x-4">
-                    <DateRangePicker value={dateRange} onChange={setDateRange} />
+                    <DateRangePicker 
+                        value={dateRange} 
+                        onChange={setDateRange}
+                        startLabel={t('dashboard.dateRange.start')}
+                        endLabel={t('dashboard.dateRange.end')}
+                    />
                     <FilterDropdown
                         options={filterOptions}
                         value={selectedFilter}
                         onChange={setSelectedFilter}
+                        label={t('dashboard.filters.label')}
                     />
                 </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <KpiCard
-                    title={t('dashboard.kpis.activeProperties') || 'Active Properties'}
-                    value={dashboardData.activeProperties}
-                    icon={FiHome}
-                    color="gold"
-                />
-                <KpiCard
-                    title={t('dashboard.kpis.totalAgents') || 'Total Agents'}
-                    value={dashboardData.totalAgents}
-                    icon={FiUsers}
-                    color="charcoal"
-                />
-                <KpiCard
-                    title={t('dashboard.kpis.revenueGrowth') || 'Revenue Growth'}
-                    value={dashboardData.revenueGrowth}
-                    icon={FiTrendingUp}
-                    color="success"
-                    suffix="%"
-                />
-                <KpiCard
-                    title={t('dashboard.kpis.averagePrice') || 'Average Price'}
-                    value={dashboardData.averagePrice}
-                    icon={FiDollarSign}
-                    color="gold"
-                    prefix="$"
-                />
-                <KpiCard
-                    title={t('dashboard.kpis.daysOnMarket') || 'Days on Market'}
-                    value={dashboardData.averageDaysOnMarket}
-                    icon={FiClock}
-                    color="charcoal"
-                    suffix=" days"
-                />
-                <KpiCard
-                    title={t('dashboard.kpis.conversionRate') || 'Conversion Rate'}
-                    value={dashboardData.conversionRate}
-                    icon={FiPercent}
-                    color="success"
-                    suffix="%"
-                />
+                {settings?.kpiCards?.properties && (
+                    <KpiCard
+                        title={t('dashboard.kpis.activeProperties')}
+                        value={dashboardData.activeProperties}
+                        icon={FiHome}
+                        color="gold"
+                    />
+                )}
+                {settings?.kpiCards?.agents && (
+                    <KpiCard
+                        title={t('dashboard.kpis.totalAgents')}
+                        value={dashboardData.totalAgents}
+                        icon={FiUsers}
+                        color="charcoal"
+                    />
+                )}
+                {settings?.kpiCards?.revenue && (
+                    <KpiCard
+                        title={t('dashboard.kpis.revenueGrowth')}
+                        value={dashboardData.revenueGrowth}
+                        icon={FiTrendingUp}
+                        color="success"
+                        suffix="%"
+                    />
+                )}
+                {settings?.kpiCards?.price && (
+                    <KpiCard
+                        title={t('dashboard.kpis.averagePrice')}
+                        value={dashboardData.averagePrice}
+                        icon={FiDollarSign}
+                        color="gold"
+                        prefix="$"
+                    />
+                )}
+                {settings?.kpiCards?.daysOnMarket && (
+                    <KpiCard
+                        title={t('dashboard.kpis.daysOnMarket')}
+                        value={dashboardData.averageDaysOnMarket}
+                        icon={FiClock}
+                        color="charcoal"
+                        suffix={t('dashboard.kpis.days')}
+                    />
+                )}
+                {settings?.kpiCards?.conversionRate && (
+                    <KpiCard
+                        title={t('dashboard.kpis.conversionRate')}
+                        value={dashboardData.conversionRate}
+                        icon={FiPercent}
+                        color="success"
+                        suffix="%"
+                    />
+                )}
             </div>
 
             {dashboardData.charts && (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-                    <div className="bg-white p-6 rounded-lg shadow">
-                        <h2 className="text-lg font-medium text-gray-900 mb-4">
-                            {t('dashboard.charts.revenue') || 'Revenue History'}
-                        </h2>
-                        <LineChart data={dashboardData.charts.monthlyRevenue} />
-                    </div>
-                    <div className="bg-white p-6 rounded-lg shadow">
-                        <h2 className="text-lg font-medium text-gray-900 mb-4">
-                            {t('dashboard.charts.properties') || 'Property Types'}
-                        </h2>
-                        <PieChart data={dashboardData.charts.propertyTypes} />
-                    </div>
+                    {settings?.charts?.revenue && (
+                        <div className="bg-white p-6 rounded-lg shadow">
+                            <h2 className="text-lg font-medium text-gray-900 mb-4">
+                                {t('dashboard.charts.revenue')}
+                            </h2>
+                            <LineChart 
+                                data={dashboardData.charts.monthlyRevenue}
+                                xAxisLabel={t('dashboard.charts.xAxis.months')}
+                                yAxisLabel={t('dashboard.charts.yAxis.revenue')}
+                            />
+                        </div>
+                    )}
+                    {settings?.charts?.propertyTypes && (
+                        <div className="bg-white p-6 rounded-lg shadow">
+                            <h2 className="text-lg font-medium text-gray-900 mb-4">
+                                {t('dashboard.charts.properties')}
+                            </h2>
+                            <PieChart 
+                                data={dashboardData.charts.propertyTypes}
+                                label={t('dashboard.charts.propertyTypes')}
+                            />
+                        </div>
+                    )}
                 </div>
             )}
         </div>
