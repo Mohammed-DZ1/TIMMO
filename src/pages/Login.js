@@ -4,76 +4,125 @@ import { useTranslation } from 'react-i18next';
 import useAuth from '../hooks/useAuth';
 
 const Login = () => {
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [errorMessage, setErrorMessage] = useState('');
+    const { t } = useTranslation();
     const navigate = useNavigate();
     const { login, user } = useAuth();
-    const { t } = useTranslation();
+    const [formData, setFormData] = useState({
+        email: '',
+        password: ''
+    });
+    const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
 
     // If already logged in, redirect to dashboard
     if (user) {
         return <Navigate to="/" replace />;
     }
 
-    const handleLogin = async (e) => {
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({
+            ...prev,
+            [name]: value
+        }));
+        setError('');
+    };
+
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        setErrorMessage('');
+        setError('');
+        setLoading(true);
+
+        if (!formData.email || !formData.password) {
+            setError(t('Please fill in all fields'));
+            setLoading(false);
+            return;
+        }
 
         try {
-            await login(email, password);
-            navigate('/', { replace: true });
-        } catch (error) {
-            console.error('Login error:', error);
-            setErrorMessage(error.response?.data?.message || t('login.error') || 'Invalid credentials');
+            const result = await login(formData.email, formData.password);
+            if (result.success) {
+                navigate('/', { replace: true });
+            } else {
+                setError(result.error || t('Login failed'));
+            }
+        } catch (err) {
+            console.error('Login error:', err);
+            setError(t('Login failed. Please try again.'));
+        } finally {
+            setLoading(false);
         }
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-secondary-500">
-            <div className="bg-white p-8 rounded-2xl shadow-gold-lg w-full max-w-md">
-                <div className="text-center mb-8">
-                    <h2 className="text-3xl font-bold text-primary-500">{t('login.title') || 'Login'}</h2>
-                    <p className="text-secondary-400 mt-2">{t('login.subtitle') || 'Welcome back!'}</p>
+        <div className="min-h-screen flex items-center justify-center bg-gray-100 py-12 px-4 sm:px-6 lg:px-8">
+            <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-lg shadow-lg">
+                <div>
+                    <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+                        {t('Sign in to your account')}
+                    </h2>
                 </div>
+                <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+                    {error && (
+                        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
+                            {error}
+                        </div>
+                    )}
+                    <div className="rounded-md shadow-sm -space-y-px">
+                        <div>
+                            <label htmlFor="email" className="sr-only">
+                                {t('Email address')}
+                            </label>
+                            <input
+                                id="email"
+                                name="email"
+                                type="email"
+                                autoComplete="email"
+                                required
+                                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
+                                placeholder={t('Email address')}
+                                value={formData.email}
+                                onChange={handleChange}
+                                disabled={loading}
+                            />
+                        </div>
+                        <div>
+                            <label htmlFor="password" className="sr-only">
+                                {t('Password')}
+                            </label>
+                            <input
+                                id="password"
+                                name="password"
+                                type="password"
+                                autoComplete="current-password"
+                                required
+                                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
+                                placeholder={t('Password')}
+                                value={formData.password}
+                                onChange={handleChange}
+                                disabled={loading}
+                            />
+                        </div>
+                    </div>
 
-                {errorMessage && (
-                    <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 text-red-700">
-                        <p>{errorMessage}</p>
-                    </div>
-                )}
-
-                <form onSubmit={handleLogin} className="space-y-6">
                     <div>
-                        <label className="block text-sm font-medium text-secondary-500 mb-2">
-                            {t('login.email') || 'Email'}
-                        </label>
-                        <input
-                            type="email"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            className="w-full p-3 border border-secondary-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                            required
-                        />
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className={`group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white ${
+                                loading
+                                    ? 'bg-gray-400 cursor-not-allowed'
+                                    : 'bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500'
+                            }`}
+                        >
+                            {loading ? (
+                                <span className="absolute left-0 inset-y-0 flex items-center pl-3">
+                                    <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full"></div>
+                                </span>
+                            ) : null}
+                            {loading ? t('Signing in...') : t('Sign in')}
+                        </button>
                     </div>
-                    <div>
-                        <label className="block text-sm font-medium text-secondary-500 mb-2">
-                            {t('login.password') || 'Password'}
-                        </label>
-                        <input
-                            type="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            className="w-full p-3 border border-secondary-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                            required
-                        />
-                    </div>
-                    <button
-                        type="submit"
-                        className="w-full py-3 px-4 bg-gradient-to-r from-primary-500 to-primary-600 text-white font-medium rounded-xl hover:to-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transform transition-all duration-200 hover:scale-[1.02]"
-                    >
-                        {t('login.submit') || 'Sign In'}
-                    </button>
                 </form>
             </div>
         </div>
