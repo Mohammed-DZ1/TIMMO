@@ -100,10 +100,12 @@ try {
             const SUPER_ADMIN_NAME = process.env.SUPER_ADMIN_NAME || 'Super Admin';
 
             console.log('Checking super admin credentials...');
-            console.log('Email configured:', !!SUPER_ADMIN_EMAIL);
-            console.log('Password configured:', !!SUPER_ADMIN_PASSWORD);
+            console.log('SUPER_ADMIN_EMAIL:', SUPER_ADMIN_EMAIL ? 'configured' : 'missing');
+            console.log('SUPER_ADMIN_PASSWORD:', SUPER_ADMIN_PASSWORD ? 'configured' : 'missing');
+            console.log('SUPER_ADMIN_NAME:', SUPER_ADMIN_NAME);
 
             if (!SUPER_ADMIN_EMAIL || !SUPER_ADMIN_PASSWORD) {
+                console.log('Missing required credentials');
                 return {
                     statusCode: 500,
                     headers: { 'Content-Type': 'application/json' },
