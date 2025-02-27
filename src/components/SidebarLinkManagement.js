@@ -1,86 +1,114 @@
 import React, { useEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next'; // Import translation hook
-import * as icons from 'react-icons/fa'; // Import all icons dynamically
+import { useTranslation } from 'react-i18next';
+import * as icons from 'react-icons/fa';
+import useAuth from '../hooks/useAuth';
 
 const SidebarLinkManagement = ({ userRole }) => {
-    const { t } = useTranslation(); // Hook for translations
+    const { t } = useTranslation();
+    const { user } = useAuth();
     const [links, setLinks] = useState([]);
     const [newLink, setNewLink] = useState({ path: '', label: '', icon: 'FaHome' });
     const [availableIcons, setAvailableIcons] = useState([]);
+    const [error, setError] = useState('');
 
-    // Fetch existing sidebar links from the backend on mount
     useEffect(() => {
         const fetchLinks = async () => {
             try {
-                const response = await fetch('https://timmodashboard.netlify.app/.netlify/functions/getSidebarLinks', {
-                    method: 'POST',
+                const response = await fetch('/.netlify/functions/getSidebarLinks', {
                     headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ role: userRole })
+                        'Authorization': `Bearer ${await user.getIdToken()}`
+                    }
                 });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to fetch sidebar links');
+                }
+                
                 const data = await response.json();
-                setLinks(data.links || []);
+                setLinks(data || []);
             } catch (error) {
                 console.error('Error fetching links:', error);
+                setError(t('errorFetchingLinks'));
             }
         };
 
-        fetchLinks();
+        // Load available icons
+        setAvailableIcons(Object.keys(icons).filter(icon => icon.startsWith('Fa')));
 
-        // Load available icons dynamically from react-icons
-        setAvailableIcons(Object.keys(icons).filter((icon) => icon.startsWith('Fa')));
-    }, [userRole]);
+        if (user) {
+            fetchLinks();
+        }
+    }, [user, t]);
 
-    // Handle input changes for new link
     const handleInputChange = (e) => {
         const { name, value } = e.target;
-        setNewLink((prev) => ({ ...prev, [name]: value }));
+        setNewLink(prev => ({ ...prev, [name]: value }));
     };
 
-    // Add a new sidebar link
     const handleAddLink = async () => {
         if (!newLink.path || !newLink.label || !newLink.icon) {
-            alert(t('errorFillAllFields')); // Use translation for error message
+            setError(t('errorFillAllFields'));
             return;
         }
 
-        // Prevent duplicate paths
         if (links.some(link => link.path === newLink.path)) {
-            alert(t('errorPathExists')); // Use translation for duplicate error
+            setError(t('errorPathExists'));
             return;
         }
-
-        const updatedLinks = [...links, newLink];
-        setLinks(updatedLinks);  // Update locally
 
         try {
-            await fetch('https://timmodashboard.netlify.app/.netlify/functions/updateSidebarLinks', {
+            const response = await fetch('/.netlify/functions/updateSidebarLinks', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ role: userRole, updatedLinks })
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${await user.getIdToken()}`
+                },
+                body: JSON.stringify({
+                    role: userRole,
+                    action: 'add',
+                    link: newLink
+                })
             });
-        } catch (error) {
-            console.error('Error updating sidebar links:', error);
-        }
 
-        // Clear input fields
-        setNewLink({ path: '', label: '', icon: 'FaHome' });
+            if (!response.ok) {
+                throw new Error('Failed to add sidebar link');
+            }
+
+            const data = await response.json();
+            setLinks(data.links);
+            setNewLink({ path: '', label: '', icon: 'FaHome' });
+            setError('');
+        } catch (error) {
+            console.error('Error adding link:', error);
+            setError(t('errorAddingLink'));
+        }
     };
 
-    // Remove a link from the list
-    const handleRemoveLink = async (index) => {
-        const updatedLinks = links.filter((_, i) => i !== index);
-        setLinks(updatedLinks);
-
+    const handleDeleteLink = async (path) => {
         try {
-            await fetch('https://timmodashboard.netlify.app/.netlify/functions/updateSidebarLinks', {
+            const response = await fetch('/.netlify/functions/updateSidebarLinks', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ role: userRole, updatedLinks })
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${await user.getIdToken()}`
+                },
+                body: JSON.stringify({
+                    role: userRole,
+                    action: 'delete',
+                    path
+                })
             });
+
+            if (!response.ok) {
+                throw new Error('Failed to delete sidebar link');
+            }
+
+            const data = await response.json();
+            setLinks(data.links);
+            setError('');
         } catch (error) {
-            console.error('Error updating sidebar links:', error);
+            console.error('Error deleting link:', error);
+            setError(t('errorDeletingLink'));
         }
     };
 
@@ -99,7 +127,7 @@ const SidebarLinkManagement = ({ userRole }) => {
                                 {t(link.label)} ({link.path})
                             </span>
                             <button
-                                onClick={() => handleRemoveLink(index)}
+                                onClick={() => handleDeleteLink(link.path)}
                                 className="bg-red-500 text-white px-3 py-1 rounded"
                             >
                                 {t('remove')}
@@ -152,6 +180,11 @@ const SidebarLinkManagement = ({ userRole }) => {
                     >
                         {t('addLink')}
                     </button>
+                </div>
+            )}
+            {error && (
+                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+                    {error}
                 </div>
             )}
         </div>
