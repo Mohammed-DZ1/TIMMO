@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
-const { MongoClient } = require('mongodb');
+const { initializeApp, cert } = require('firebase-admin/app');
+const { getFirestore } = require('firebase-admin/firestore');
 
 // Safe logging function
 const log = (message, data) => {
@@ -12,26 +13,16 @@ const log = (message, data) => {
     }
 };
 
-const MONGODB_TIMEOUT = 5000; // 5 seconds timeout
+// Initialize Firebase Admin
+const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+const app = initializeApp({
+    credential: cert(serviceAccount)
+});
 
-// Helper function to ensure MongoDB URI has all required parameters
-function getMongoUri(uri) {
-    const url = new URL(uri);
-    if (!url.searchParams.has('ssl')) {
-        url.searchParams.set('ssl', 'true');
-    }
-    if (!url.searchParams.has('replicaSet')) {
-        url.searchParams.set('replicaSet', 'atlas-n11wrb-shard-0');
-    }
-    if (!url.searchParams.has('authSource')) {
-        url.searchParams.set('authSource', 'admin');
-    }
-    return url.toString();
-}
+const db = getFirestore();
 
 exports.handler = async (event, context) => {
     context.callbackWaitsForEmptyEventLoop = false;
-    let client = null;
 
     const headers = {
         'Access-Control-Allow-Origin': 'https://timmodashboard.netlify.app',
@@ -66,27 +57,6 @@ exports.handler = async (event, context) => {
         // Parse property data
         const propertyData = JSON.parse(event.body);
 
-        // Connect to MongoDB with proper replica set options
-        const uri = getMongoUri(process.env.MONGODB_URI);
-        client = new MongoClient(uri, {
-            useNewUrlParser: true,
-            useUnifiedTopology: true,
-            serverSelectionTimeoutMS: MONGODB_TIMEOUT,
-            socketTimeoutMS: MONGODB_TIMEOUT,
-            connectTimeoutMS: MONGODB_TIMEOUT,
-            maxPoolSize: 1,
-            retryWrites: true,
-            ssl: true,
-            tls: true,
-            tlsAllowInvalidCertificates: false,
-            directConnection: false
-        });
-
-        await client.connect();
-        
-        const db = client.db(process.env.MONGODB_DB_NAME);
-        const propertiesCollection = db.collection('properties');
-
         // Add metadata
         propertyData.createdBy = decoded.email;
         propertyData.createdAt = new Date();
@@ -98,29 +68,26 @@ exports.handler = async (event, context) => {
             delete propertyData.media;
         }
 
-        // Save property with timeout and write concern
-        await Promise.race([
-            propertiesCollection.insertOne(propertyData, { 
-                writeConcern: { w: 1, wtimeout: 2500 },
-                readPreference: 'primary'
-            }),
-            new Promise((_, reject) => 
-                setTimeout(() => reject(new Error('Property save timeout')), MONGODB_TIMEOUT)
-            )
-        ]);
+        // Save to Firestore
+        const propertiesRef = db.collection('properties');
+        const docRef = propertyData.propertyId ? 
+            propertiesRef.doc(propertyData.propertyId) : 
+            propertiesRef.doc();
+
+        await docRef.set(propertyData, { merge: true });
 
         return {
             statusCode: 200,
             headers,
             body: JSON.stringify({
                 message: 'Property saved successfully',
-                propertyId: propertyData.propertyId
+                propertyId: docRef.id
             })
         };
 
     } catch (error) {
-        log('Save property error:', error);
-        
+        log('Error saving property:', error);
+
         if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
             return {
                 statusCode: 401,
@@ -129,25 +96,16 @@ exports.handler = async (event, context) => {
             };
         }
 
-        if (error.message && (error.message.includes('timeout') || error.name === 'MongoServerSelectionError')) {
+        if (error.code === 'PERMISSION_DENIED') {
             return {
-                statusCode: 504,
+                statusCode: 403,
                 headers,
                 body: JSON.stringify({ 
-                    message: 'Database connection timed out',
-                    error: error.message
+                    message: 'Permission denied - Insufficient privileges to save property'
                 })
             };
         }
 
-        if (error.name === 'MongoServerError') {
-            return {
-                statusCode: 500,
-                headers,
-                body: JSON.stringify({ message: 'Database error - Failed to save property' })
-            };
-        }
-        
         return {
             statusCode: 500,
             headers,
@@ -156,18 +114,5 @@ exports.handler = async (event, context) => {
                 error: error.message || 'Unknown error'
             })
         };
-    } finally {
-        if (client) {
-            try {
-                await Promise.race([
-                    client.close(true), // Force close
-                    new Promise((_, reject) => 
-                        setTimeout(() => reject(new Error('Connection close timeout')), 1000)
-                    )
-                ]);
-            } catch (e) {
-                log('Error closing MongoDB connection:', e);
-            }
-        }
     }
 };
