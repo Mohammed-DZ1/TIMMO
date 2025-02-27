@@ -1,15 +1,22 @@
 const { initializeApp, cert } = require('firebase-admin/app');
-const { getAuth } = require('firebase-admin/auth');
 const { getFirestore } = require('firebase-admin/firestore');
+const { getAuth } = require('firebase-admin/auth');
 
 // Initialize Firebase Admin
-const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+let serviceAccount;
+try {
+    serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+} catch (error) {
+    console.error('Error parsing FIREBASE_SERVICE_ACCOUNT:', error);
+    throw new Error('Invalid FIREBASE_SERVICE_ACCOUNT format');
+}
+
 const app = initializeApp({
     credential: cert(serviceAccount)
 }, 'initializeSuperAdmin');
 
-const auth = getAuth();
 const db = getFirestore();
+const auth = getAuth();
 
 exports.handler = async (event) => {
     // Only allow POST requests
@@ -28,7 +35,13 @@ exports.handler = async (event) => {
         if (!SUPER_ADMIN_EMAIL || !SUPER_ADMIN_PASSWORD) {
             return {
                 statusCode: 500,
-                body: JSON.stringify({ error: 'Super admin credentials not configured' })
+                body: JSON.stringify({ 
+                    error: 'Super admin credentials not configured',
+                    details: {
+                        email: !SUPER_ADMIN_EMAIL ? 'Missing SUPER_ADMIN_EMAIL' : 'Set',
+                        password: !SUPER_ADMIN_PASSWORD ? 'Missing SUPER_ADMIN_PASSWORD' : 'Set'
+                    }
+                })
             };
         }
 
@@ -37,7 +50,10 @@ exports.handler = async (event) => {
             const userRecord = await auth.getUserByEmail(SUPER_ADMIN_EMAIL);
             return {
                 statusCode: 400,
-                body: JSON.stringify({ error: 'Super admin already exists' })
+                body: JSON.stringify({ 
+                    error: 'Super admin already exists',
+                    uid: userRecord.uid
+                })
             };
         } catch (error) {
             // If error.code === 'auth/user-not-found' then proceed with creation
@@ -80,7 +96,8 @@ exports.handler = async (event) => {
             statusCode: 500,
             body: JSON.stringify({ 
                 error: 'Failed to create super admin',
-                details: error.message
+                details: error.message,
+                stack: error.stack
             })
         };
     }
