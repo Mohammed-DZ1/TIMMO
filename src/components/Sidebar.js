@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import useAuth from '../hooks/useAuth';
 import Logo from '../images/logo1.png';
 import * as icons from 'react-icons/fa';
+import './Sidebar.css';
 
 const defaultLinks = [
     {
@@ -118,19 +119,19 @@ const Sidebar = () => {
                                 <NavLink
                                     to={link.path}
                                     className={({ isActive }) =>
-                                        `flex items-center px-4 py-3 rounded-lg transition-colors duration-200 ${
-                                            isActive
-                                                ? 'bg-primary-500 text-white'
-                                                : 'text-gray-300 hover:bg-secondary-800 hover:text-white'
+                                        `sidebar-link flex items-center px-4 py-3 rounded-lg transition-colors duration-200 ${
+                                            isActive ? 'active' : 'text-gray-300 hover:bg-secondary-800 hover:text-white'
                                         }`
                                     }
                                 >
-                                    {IconComponent && <IconComponent className="w-5 h-5" />}
-                                    {isHovered && (
-                                        <span className="ml-4 text-sm font-medium">
-                                            {t(link.label)}
-                                        </span>
-                                    )}
+                                    <div className="link-content flex items-center">
+                                        {IconComponent && <IconComponent className="w-5 h-5" />}
+                                        {isHovered && (
+                                            <span className="ml-4 text-sm font-medium">
+                                                {t(link.label)}
+                                            </span>
+                                        )}
+                                    </div>
                                 </NavLink>
                             </li>
                         );
@@ -141,14 +142,16 @@ const Sidebar = () => {
             {/* Logout Button */}
             <button
                 onClick={handleLogout}
-                className="w-full px-4 py-3 mb-6 flex items-center text-gray-300 hover:text-white hover:bg-red-600 transition-colors duration-200"
+                className="logout-button w-full px-4 py-3 mb-6 flex items-center text-gray-300 hover:text-white transition-colors duration-200"
             >
-                <FaSignOutAlt className="w-5 h-5" />
-                {isHovered && (
-                    <span className="ml-4 text-sm font-medium">
-                        {t('logout')}
-                    </span>
-                )}
+                <div className="button-content flex items-center">
+                    <FaSignOutAlt className="w-5 h-5" />
+                    {isHovered && (
+                        <span className="ml-4 text-sm font-medium">
+                            {t('logout')}
+                        </span>
+                    )}
+                </div>
             </button>
         </div>
     );

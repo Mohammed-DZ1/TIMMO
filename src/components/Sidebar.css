@@ -1,0 +1,99 @@
+@property --a {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+.sidebar-link {
+  position: relative;
+  overflow: hidden;
+}
+
+.sidebar-link.active {
+  background: transparent !important;
+  position: relative;
+}
+
+.sidebar-link.active::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-conic-gradient(
+    from var(--a),
+    #ffd700 0%,    /* Gold */
+    #ffd700 5%,
+    transparent 5%,
+    transparent 40%,
+    #ffd700 50%
+  );
+  border-radius: 0.5rem;
+  animation: rotating 4s linear infinite;
+}
+
+.sidebar-link.active::after {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  background: #1a1a1f;
+  border-radius: 0.4rem;
+}
+
+.sidebar-link.active .link-content {
+  position: relative;
+  z-index: 1;
+  color: #ffd700;
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+}
+
+.sidebar-link.active:hover {
+  filter: drop-shadow(0 0 15px rgba(255, 215, 0, 0.2));
+}
+
+@keyframes rotating {
+  0% {
+    --a: 0deg;
+  }
+  100% {
+    --a: 360deg;
+  }
+}
+
+/* Logout button animation */
+.logout-button {
+  position: relative;
+  overflow: hidden;
+}
+
+.logout-button:hover {
+  background: transparent !important;
+  position: relative;
+}
+
+.logout-button:hover::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-conic-gradient(
+    from var(--a),
+    #ff4444 0%,    /* Red */
+    #ff4444 5%,
+    transparent 5%,
+    transparent 40%,
+    #ff4444 50%
+  );
+  animation: rotating 4s linear infinite;
+}
+
+.logout-button:hover::after {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  background: #1a1a1f;
+}
+
+.logout-button:hover .button-content {
+  position: relative;
+  z-index: 1;
+  color: #ff4444;
+  text-shadow: 0 0 10px rgba(255, 68, 68, 0.5);
+}
