@@ -1,29 +1,75 @@
-const usersDatabase = [];  // Temporary in-memory database (replace with actual DB in production)
+const { initializeApp, cert } = require('firebase-admin/app');
+const { getFirestore } = require('firebase-admin/firestore');
+const bcrypt = require('bcryptjs');
+
+// Initialize Firebase Admin
+const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+const app = initializeApp({
+    credential: cert(serviceAccount)
+}, 'addOrUpdateUser');
+
+const db = getFirestore();
 
 exports.handler = async (event) => {
-    try {
-        const newUser = JSON.parse(event.body);
-        const existingUserIndex = usersDatabase.findIndex((user) => user.id === newUser.id);
+    // Handle CORS preflight
+    if (event.httpMethod === 'OPTIONS') {
+        return {
+            statusCode: 200,
+            headers: {
+                'Access-Control-Allow-Origin': process.env.SITE_URL || '*',
+                'Access-Control-Allow-Methods': 'POST, OPTIONS',
+                'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+                'Access-Control-Allow-Credentials': 'true'
+            },
+            body: ''
+        };
+    }
 
-        if (existingUserIndex !== -1) {
-            // Update existing user
-            usersDatabase[existingUserIndex] = newUser;
-            console.log('User updated:', newUser);
-        } else {
-            // Add new user
-            usersDatabase.push(newUser);
-            console.log('New user added:', newUser);
+    try {
+        const userData = JSON.parse(event.body);
+        const usersRef = db.collection('users');
+
+        // Hash password if provided
+        if (userData.password) {
+            const salt = await bcrypt.genSalt(10);
+            userData.password = await bcrypt.hash(userData.password, salt);
         }
+
+        // Add metadata
+        userData.updatedAt = new Date().toISOString();
+        if (!userData.id) {
+            userData.createdAt = userData.updatedAt;
+        }
+
+        // Save to Firestore
+        const userDoc = userData.id ? 
+            usersRef.doc(userData.id) : 
+            usersRef.doc();
+
+        await userDoc.set(userData, { merge: true });
 
         return {
             statusCode: 200,
-            body: JSON.stringify({ message: 'User added/updated successfully' }),
+            headers: {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': process.env.SITE_URL || '*',
+                'Access-Control-Allow-Credentials': 'true'
+            },
+            body: JSON.stringify({ 
+                message: 'User saved successfully',
+                userId: userDoc.id
+            })
         };
     } catch (error) {
-        console.error('Error adding/updating user:', error);
+        console.error('Error saving user:', error);
         return {
             statusCode: 500,
-            body: JSON.stringify({ message: 'Error adding/updating user' }),
+            headers: {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': process.env.SITE_URL || '*',
+                'Access-Control-Allow-Credentials': 'true'
+            },
+            body: JSON.stringify({ error: 'Error saving user' })
         };
     }
 };
