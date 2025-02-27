@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
-const { MongoClient } = require('mongodb');
+const { initializeApp, cert } = require('firebase-admin/app');
+const { getFirestore } = require('firebase-admin/firestore');
 
 const defaultSettings = {
     theme: 'light',
@@ -15,28 +16,27 @@ const defaultSettings = {
     }
 };
 
+// Initialize Firebase Admin
+const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+const app = initializeApp({
+    credential: cert(serviceAccount)
+});
+
+const db = getFirestore();
+
 const getUserSettings = async (email) => {
-    let client;
     try {
-        // Connect to MongoDB
-        client = new MongoClient(process.env.MONGODB_URI);
-        await client.connect();
-        const db = client.db('timmo');
+        // Get user settings from Firestore
+        const userSettingsRef = db.collection('user_settings').doc(email);
+        const doc = await userSettingsRef.get();
 
-        // Get user settings from database
-        const userSettings = await db.collection('user_settings').findOne(
-            { email },
-            { projection: { _id: 0 } }
-        );
-
-        return userSettings || defaultSettings;
+        if (doc.exists) {
+            return doc.data();
+        }
+        return defaultSettings;
     } catch (error) {
         console.error('GetUserSettings error:', error);
         return defaultSettings;
-    } finally {
-        if (client) {
-            await client.close();
-        }
     }
 };
 
