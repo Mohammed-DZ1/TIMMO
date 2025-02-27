@@ -1,39 +1,11 @@
 const { initializeApp, cert } = require('firebase-admin/app');
 const { getFirestore } = require('firebase-admin/firestore');
 const { getAuth } = require('firebase-admin/auth');
+const path = require('path');
 
 // Initialize Firebase Admin
-let serviceAccount;
-try {
-    const rawServiceAccount = process.env.FIREBASE_SERVICE_ACCOUNT;
-    if (!rawServiceAccount) {
-        throw new Error('FIREBASE_SERVICE_ACCOUNT environment variable is not set');
-    }
+const serviceAccount = require('./config/serviceAccount.json');
 
-    // Try to parse the service account
-    try {
-        serviceAccount = JSON.parse(rawServiceAccount);
-    } catch (parseError) {
-        // If parsing fails, try to clean the string and parse again
-        const cleanedServiceAccount = rawServiceAccount
-            .replace(/\\n/g, '\n')
-            .replace(/\\\"/g, '"')
-            .replace(/^\"|\"$/g, ''); // Remove surrounding quotes if present
-        serviceAccount = JSON.parse(cleanedServiceAccount);
-    }
-
-    // Validate required fields
-    const requiredFields = ['type', 'project_id', 'private_key', 'client_email'];
-    const missingFields = requiredFields.filter(field => !serviceAccount[field]);
-    if (missingFields.length > 0) {
-        throw new Error(`Missing required fields in service account: ${missingFields.join(', ')}`);
-    }
-} catch (error) {
-    console.error('Error parsing FIREBASE_SERVICE_ACCOUNT:', error);
-    throw new Error(`Invalid FIREBASE_SERVICE_ACCOUNT format: ${error.message}`);
-}
-
-// Initialize Firebase Admin SDK
 const app = initializeApp({
     credential: cert(serviceAccount)
 }, 'initializeSuperAdmin');
