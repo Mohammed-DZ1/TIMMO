@@ -1,43 +1,43 @@
-const usersDatabase = [
-    {
-        id: "1",
-        name: "Super Admin",
-        email: "superadmin@example.com",
-        role: "Super Admin",
-        permissions: {
-            sidebarLinks: {
-                dashboard: true,
-                properties: true,
-                clients: true,
-                agents: true,
-                settings: true,
-            },
-            buttons: {
-                addUser: true,
-                deleteUser: true,
-                addProperty: true,
-                deleteProperty: true,
-            },
-            forms: {
-                clientForm: true,
-                agentForm: true,
-                propertyForm: true,
-                settingsForm: true,
-            }
-        }
-    }
-];
+const { initializeApp, cert } = require('firebase-admin/app');
+const { getFirestore } = require('firebase-admin/firestore');
+
+// Initialize Firebase Admin
+const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+const app = initializeApp({
+    credential: cert(serviceAccount)
+}, 'getUsers');
+
+const db = getFirestore();
 
 exports.handler = async () => {
     try {
+        const usersRef = db.collection('users');
+        const snapshot = await usersRef.get();
+        
+        const users = [];
+        snapshot.forEach(doc => {
+            users.push({ id: doc.id, ...doc.data() });
+        });
+
         return {
             statusCode: 200,
-            body: JSON.stringify(usersDatabase),
+            headers: {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': process.env.SITE_URL || '*',
+                'Access-Control-Allow-Credentials': 'true'
+            },
+            body: JSON.stringify(users)
         };
     } catch (error) {
+        console.error('Error getting users:', error);
         return {
             statusCode: 500,
-            body: JSON.stringify({ message: 'Error fetching users' }),
+            headers: {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': process.env.SITE_URL || '*',
+                'Access-Control-Allow-Credentials': 'true'
+            },
+            body: JSON.stringify({ error: 'Internal server error' })
         };
     }
 };
