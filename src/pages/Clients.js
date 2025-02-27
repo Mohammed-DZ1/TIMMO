@@ -1,137 +1,212 @@
 import React, { useState, useEffect } from 'react';
-import { v4 as uuidv4 } from 'uuid';  // Import unique ID generator
+import { useTranslation } from 'react-i18next';
+import useAuth from '../hooks/useAuth';
 import ClientForm from '../components/ClientForm';
 import ClientDetailsModal from '../components/ClientDetailsModal';
+import { useSettings } from '../hooks/useSettings';
 
 const Clients = () => {
+    const { t } = useTranslation();
+    const { user } = useAuth();
+    const { settings } = useSettings();
     const [clients, setClients] = useState([]);
     const [showForm, setShowForm] = useState(false);
     const [selectedClient, setSelectedClient] = useState(null);
     const [isEditing, setIsEditing] = useState(false);
-    const [visibilitySettings, setVisibilitySettings] = useState({
-        showEditButton: true,
-        showDeleteButton: true,
-        showAddClientButton: true,
-    });
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
     useEffect(() => {
-        // Load visibility settings from localStorage on component mount
-        const storedSettings = JSON.parse(localStorage.getItem('visibilitySettings'));
-        if (storedSettings) {
-            setVisibilitySettings(storedSettings);
+        const fetchClients = async () => {
+            if (!user) return;
+
+            try {
+                setLoading(true);
+                setError(null);
+
+                const response = await fetch('/.netlify/functions/getClients', {
+                    headers: {
+                        'Authorization': `Bearer ${await user.getIdToken()}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to fetch clients');
+                }
+
+                const data = await response.json();
+                setClients(data);
+            } catch (error) {
+                console.error('Error fetching clients:', error);
+                setError(t('Failed to load clients'));
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchClients();
+    }, [user, t]);
+
+    const handleAddClient = async (clientData) => {
+        if (!user) return;
+
+        try {
+            setError(null);
+            const response = await fetch('/.netlify/functions/saveClient', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${await user.getIdToken()}`
+                },
+                body: JSON.stringify(clientData)
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to add client');
+            }
+
+            const newClient = await response.json();
+            setClients(prev => [...prev, newClient]);
+            setShowForm(false);
+        } catch (error) {
+            console.error('Error adding client:', error);
+            setError(t('Failed to add client'));
         }
-    }, []);
-
-    // Function to add a new client
-    const handleAddClient = (newClient) => {
-        const clientWithId = { ...newClient, clientId: uuidv4() };  // Assign unique ID
-        setClients([...clients, clientWithId]);
-        setShowForm(false);  // Hide form after submission
     };
 
-    // Function to save the edited client
-    const handleSaveEditedClient = (updatedClient) => {
-        setClients(clients.map((client) =>
-            client.clientId === updatedClient.clientId ? updatedClient : client
-        ));
-        setShowForm(false);
-        setIsEditing(false);
-        setSelectedClient(null);
+    const handleSaveEditedClient = async (updatedClient) => {
+        if (!user) return;
+
+        try {
+            setError(null);
+            const response = await fetch('/.netlify/functions/saveClient', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${await user.getIdToken()}`
+                },
+                body: JSON.stringify(updatedClient)
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to update client');
+            }
+
+            const savedClient = await response.json();
+            setClients(prev => prev.map(client => 
+                client.id === savedClient.id ? savedClient : client
+            ));
+            setShowForm(false);
+            setIsEditing(false);
+            setSelectedClient(null);
+        } catch (error) {
+            console.error('Error updating client:', error);
+            setError(t('Failed to update client'));
+        }
     };
 
-    // Function to delete a client
-    const handleDeleteClient = (clientId) => {
-        setClients(clients.filter((client) => client.clientId !== clientId));
+    const handleDeleteClient = async (clientId) => {
+        if (!user) return;
+
+        try {
+            setError(null);
+            const response = await fetch('/.netlify/functions/deleteClient', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${await user.getIdToken()}`
+                },
+                body: JSON.stringify({ clientId })
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to delete client');
+            }
+
+            setClients(prev => prev.filter(client => client.id !== clientId));
+            setSelectedClient(null);
+        } catch (error) {
+            console.error('Error deleting client:', error);
+            setError(t('Failed to delete client'));
+        }
     };
 
-    // Function to handle client click for popup details
     const handleClientClick = (client) => {
         setSelectedClient(client);
     };
 
-    // Function to close the client details popup
     const handleCloseModal = () => {
         setSelectedClient(null);
     };
 
-    // Function to start editing from the modal
-    const handleEditFromModal = () => {
-        setIsEditing(true);
-        setShowForm(true);
-    };
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center h-full">
+                <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-primary-500"></div>
+            </div>
+        );
+    }
 
     return (
-        <div className="p-10">
-            <h1 className="text-3xl font-bold mb-6">Clients Management</h1>
+        <div className="container mx-auto px-4 py-8">
+            <div className="flex justify-between items-center mb-6">
+                <h1 className="text-2xl font-semibold text-gray-900">{t('Clients')}</h1>
+                {settings?.buttons?.addClient && (
+                    <button
+                        onClick={() => setShowForm(true)}
+                        className="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+                    >
+                        {t('Add New Client')}
+                    </button>
+                )}
+            </div>
 
-            {visibilitySettings.showAddClientButton && (
-                <button
-                    onClick={() => {
-                        setShowForm(!showForm);
-                        setIsEditing(false);
-                        setSelectedClient(null);
-                    }}
-                    className="bg-blue-600 text-white px-4 py-2 rounded mb-4"
-                >
-                    {showForm ? 'Hide Form' : 'Add New Client'}
-                </button>
+            {error && (
+                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
+                    {error}
+                </div>
             )}
 
-            {/* Show the form for adding or editing */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {clients.map((client) => (
+                    <div
+                        key={client.id}
+                        onClick={() => handleClientClick(client)}
+                        className="bg-white rounded-lg shadow p-6 cursor-pointer hover:shadow-lg transition-shadow duration-200"
+                    >
+                        <h3 className="text-lg font-medium text-gray-900">{client.name}</h3>
+                        <p className="text-sm text-gray-500">{client.email}</p>
+                        <p className="text-sm text-gray-500">{client.phone}</p>
+                        {client.propertyInterest && (
+                            <p className="text-sm text-gray-500">{t('Interested in')}: {client.propertyInterest}</p>
+                        )}
+                    </div>
+                ))}
+            </div>
+
             {showForm && (
                 <ClientForm
                     onSubmit={isEditing ? handleSaveEditedClient : handleAddClient}
-                    client={selectedClient}
-                    isEditing={isEditing}
+                    onCancel={() => {
+                        setShowForm(false);
+                        setIsEditing(false);
+                        setSelectedClient(null);
+                    }}
+                    initialData={isEditing ? selectedClient : null}
                 />
             )}
 
-            <h2 className="text-2xl font-bold mt-6">Listed Clients</h2>
-            <ul className="mt-4 space-y-4">
-                {clients.length === 0 ? (
-                    <p>No clients listed yet.</p>
-                ) : (
-                    clients.map((client) => (
-                        <li
-                            key={client.clientId}
-                            className="border p-4 rounded shadow cursor-pointer hover:bg-gray-100"
-                            onClick={() => handleClientClick(client)}  // Open client details
-                        >
-                            <p><strong>ID:</strong> {client.clientId}</p>
-                            <h3 className="text-xl font-bold">{client.name}</h3>
-                            <p><strong>Phone:</strong> {client.phoneNumber}</p>
-                            <p><strong>Type:</strong> {client.clientType}</p>
-                            <p><strong>Preferred Contact:</strong> {client.preferredContact}</p>
-
-                            <div className="mt-2 flex space-x-2">
-                                {visibilitySettings.showEditButton && (
-                                    <button
-                                        onClick={handleEditFromModal}
-                                        className="bg-green-500 text-white px-2 py-1 rounded"
-                                    >
-                                        Edit
-                                    </button>
-                                )}
-                                {visibilitySettings.showDeleteButton && (
-                                    <button
-                                        onClick={() => handleDeleteClient(client.clientId)}
-                                        className="bg-red-500 text-white px-2 py-1 rounded"
-                                    >
-                                        Delete
-                                    </button>
-                                )}
-                            </div>
-                        </li>
-                    ))
-                )}
-            </ul>
-
-            {selectedClient && (
+            {selectedClient && !showForm && (
                 <ClientDetailsModal
                     client={selectedClient}
                     onClose={handleCloseModal}
-                    onEdit={handleEditFromModal}
+                    onEdit={() => {
+                        setIsEditing(true);
+                        setShowForm(true);
+                    }}
                     onDelete={handleDeleteClient}
+                    canEdit={settings?.buttons?.editClient}
+                    canDelete={settings?.buttons?.deleteClient}
                 />
             )}
         </div>
