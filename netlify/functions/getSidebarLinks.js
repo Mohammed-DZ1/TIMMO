@@ -1,4 +1,17 @@
-const linksDatabase = {
+const jwt = require('jsonwebtoken');
+const { initializeApp, cert } = require('firebase-admin/app');
+const { getFirestore } = require('firebase-admin/firestore');
+
+// Initialize Firebase Admin
+const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+const app = initializeApp({
+    credential: cert(serviceAccount)
+}, 'getSidebarLinks');
+
+const db = getFirestore();
+
+// Default links configuration
+const defaultLinks = {
     "Super Admin": [
         { path: "/", label: "Dashboard", icon: "FaHome" },
         { path: "/properties", label: "Properties", icon: "FaBuilding" },
@@ -18,111 +31,69 @@ const linksDatabase = {
     ]
 };
 
-const getSidebarLinks = () => {
-    return [
-        {
-            path: '/',
-            label: 'dashboard',
-            icon: 'FaHome'
-        },
-        {
-            path: '/properties',
-            label: 'properties',
-            icon: 'FaBuilding'
-        },
-        {
-            path: '/clients',
-            label: 'clients',
-            icon: 'FaUsers'
-        },
-        {
-            path: '/agents',
-            label: 'agents',
-            icon: 'FaUserTie'
-        },
-        {
-            path: '/settings',
-            label: 'settings',
-            icon: 'FaCog'
-        }
-    ];
-};
-
 exports.handler = async (event) => {
-    console.log('DEBUG: Incoming Request:', event);
-
-    try {
-        let role, action, updatedLinks;
-
-        // Handle GET requests (fetch sidebar links)
-        if (event.httpMethod === "GET") {
-            role = event.queryStringParameters?.role;
-        } 
-        
-        // Handle POST requests (update sidebar links)
-        else if (event.httpMethod === "POST" && event.body) {
-            try {
-                const parsedBody = JSON.parse(event.body);
-                role = parsedBody.role;
-                action = parsedBody.action;
-                updatedLinks = parsedBody.updatedLinks;
-            } catch (jsonError) {
-                console.error('DEBUG: JSON Parsing Error:', jsonError);
-                return {
-                    statusCode: 400,
-                    headers: { 'Access-Control-Allow-Origin': '*' },
-                    body: JSON.stringify({ message: 'Invalid JSON input.', error: jsonError.message })
-                };
-            }
-        }
-
-        // Validate role input
-        if (!role || !linksDatabase[role]) {
-            console.warn('DEBUG: Invalid or missing role.');
-            return {
-                statusCode: 400,
-                headers: { 'Access-Control-Allow-Origin': '*' },
-                body: JSON.stringify({ message: 'Invalid or missing role parameter.' })
-            };
-        }
-
-        // Handle updating sidebar links if action is "update"
-        if (event.httpMethod === "POST" && action === 'update') {
-            if (!updatedLinks || !Array.isArray(updatedLinks)) {
-                return {
-                    statusCode: 400,
-                    headers: { 'Access-Control-Allow-Origin': '*' },
-                    body: JSON.stringify({ message: 'Invalid or missing updated links.' })
-                };
-            }
-
-            console.log('DEBUG: Updating links for role:', role);
-            linksDatabase[role] = updatedLinks;
-
-            return {
-                statusCode: 200,
-                headers: { 'Access-Control-Allow-Origin': '*' },
-                body: JSON.stringify({ message: 'Links updated successfully.' })
-            };
-        }
-
-        // Default: Return sidebar links for the requested role
-        console.log('DEBUG: Fetching links for role:', role);
+    // Handle CORS preflight
+    if (event.httpMethod === 'OPTIONS') {
         return {
             statusCode: 200,
-            headers: { 'Access-Control-Allow-Origin': '*' },
-            body: JSON.stringify({ links: linksDatabase[role] || getSidebarLinks() }) // Ensure response is always an array
+            headers: {
+                'Access-Control-Allow-Origin': process.env.SITE_URL || '*',
+                'Access-Control-Allow-Methods': 'GET, OPTIONS',
+                'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+                'Access-Control-Allow-Credentials': 'true'
+            },
+            body: ''
         };
+    }
 
-    } catch (error) {
-        console.error('DEBUG: Unexpected Error:', error);
+    try {
+        // Get token from Authorization header
+        const token = event.headers.authorization?.split(' ')[1];
+        if (!token) {
+            throw new Error('No token provided');
+        }
+
+        // Verify token
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+        // Get user from Firestore
+        const userRef = db.collection('users').doc(decoded.id);
+        const userDoc = await userRef.get();
+
+        if (!userDoc.exists) {
+            throw new Error('User not found');
+        }
+
+        const userData = userDoc.data();
+        const userRole = userData.role;
+
+        // Get navigation configuration from Firestore
+        const configRef = db.collection('config').doc('navigation');
+        const configDoc = await configRef.get();
+        
+        // Use custom navigation config if it exists, otherwise use default
+        const navigationConfig = configDoc.exists ? configDoc.data() : defaultLinks;
+        const userLinks = navigationConfig[userRole] || defaultLinks[userRole] || defaultLinks['Agent'];
+
         return {
-            statusCode: 500,
-            headers: { 'Access-Control-Allow-Origin': '*' },
-            body: JSON.stringify({
-                message: 'Failed to handle sidebar links.',
-                error: error.message
-            })
+            statusCode: 200,
+            headers: {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': process.env.SITE_URL || '*',
+                'Access-Control-Allow-Credentials': 'true'
+            },
+            body: JSON.stringify(userLinks)
+        };
+    } catch (error) {
+        console.error('Get sidebar links error:', error);
+        return {
+            statusCode: error.message === 'No token provided' ? 401 : 500,
+            headers: {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': process.env.SITE_URL || '*',
+                'Access-Control-Allow-Credentials': 'true'
+            },
+            body: JSON.stringify({ error: error.message })
         };
     }
 };
