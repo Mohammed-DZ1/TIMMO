@@ -1,5 +1,10 @@
 import { useState, useEffect, createContext, useContext } from 'react';
-import { loginUser, checkAuth, logoutUser } from '../services/api';
+import { 
+    signInWithEmailAndPassword,
+    signOut,
+    onAuthStateChanged 
+} from 'firebase/auth';
+import { auth } from '../config/firebase';
 
 const AuthContext = createContext(null);
 
@@ -8,42 +13,38 @@ export const AuthProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        checkAuthStatus();
-    }, []);
-
-    const checkAuthStatus = async () => {
-        try {
-            const response = await checkAuth();
-            setUser(response.data.user);
-        } catch (error) {
-            setUser(null);
-        } finally {
+        const unsubscribe = onAuthStateChanged(auth, (user) => {
+            setUser(user);
             setLoading(false);
-        }
-    };
+        });
+
+        return () => unsubscribe();
+    }, []);
 
     const login = async (email, password) => {
         try {
-            const response = await loginUser(email, password);
-            setUser(response.data.user);
+            const userCredential = await signInWithEmailAndPassword(auth, email, password);
+            setUser(userCredential.user);
             return { success: true };
         } catch (error) {
+            console.error('Login error:', error);
             return {
                 success: false,
-                error: error.response?.data?.message || 'Login failed'
+                error: error.message || 'Login failed'
             };
         }
     };
 
     const logout = async () => {
         try {
-            await logoutUser();
+            await signOut(auth);
             setUser(null);
             return { success: true };
         } catch (error) {
+            console.error('Logout error:', error);
             return {
                 success: false,
-                error: error.response?.data?.message || 'Logout failed'
+                error: error.message || 'Logout failed'
             };
         }
     };
@@ -53,7 +54,13 @@ export const AuthProvider = ({ children }) => {
     }
 
     return (
-        <AuthContext.Provider value={{ user, login, logout, loading }}>
+        <AuthContext.Provider value={{ 
+            user, 
+            login, 
+            logout, 
+            loading,
+            isAuthenticated: !!user 
+        }}>
             {children}
         </AuthContext.Provider>
     );
