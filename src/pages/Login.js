@@ -63,7 +63,6 @@ const Login = () => {
                         <h2>
                             <i className="fa-solid fa-right-to-bracket"></i>
                             {t('Login')}
-                            <i className="fa-solid fa-heart"></i>
                         </h2>
                         <form onSubmit={handleSubmit}>
                             <input
