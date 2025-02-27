@@ -1,24 +1,44 @@
 const { initializeApp, cert } = require('firebase-admin/app');
 const { getFirestore } = require('firebase-admin/firestore');
 const { getAuth } = require('firebase-admin/auth');
-const fs = require('fs');
-const path = require('path');
 
 // Initialize Firebase Admin
 try {
-    const serviceAccountPath = path.join(__dirname, 'config', 'serviceAccount.json');
-    console.log('Looking for service account at:', serviceAccountPath);
+    const rawServiceAccount = process.env.FIREBASE_SERVICE_ACCOUNT;
+    console.log('Checking for FIREBASE_SERVICE_ACCOUNT env var');
     
-    if (!fs.existsSync(serviceAccountPath)) {
-        throw new Error(`Service account file not found at ${serviceAccountPath}`);
+    if (!rawServiceAccount) {
+        throw new Error('FIREBASE_SERVICE_ACCOUNT environment variable is not set');
     }
-    
-    const serviceAccountContent = fs.readFileSync(serviceAccountPath, 'utf8');
-    console.log('Service account file found and read');
-    
-    const serviceAccount = JSON.parse(serviceAccountContent);
-    console.log('Service account JSON parsed successfully');
 
+    let serviceAccount;
+    try {
+        // Try parsing the raw string first
+        serviceAccount = JSON.parse(rawServiceAccount);
+    } catch (parseError) {
+        console.log('Initial JSON parse failed, cleaning string and retrying');
+        // If parsing fails, try to clean the string and parse again
+        const cleanedServiceAccount = rawServiceAccount
+            .replace(/\\n/g, '\n')  // Replace escaped newlines
+            .replace(/\\\"/g, '"')  // Replace escaped quotes
+            .replace(/^\"|\"$/g, '') // Remove surrounding quotes
+            .trim();                // Remove any whitespace
+        
+        try {
+            serviceAccount = JSON.parse(cleanedServiceAccount);
+        } catch (secondParseError) {
+            throw new Error(`Failed to parse service account JSON after cleaning: ${secondParseError.message}`);
+        }
+    }
+
+    // Validate required fields
+    const requiredFields = ['type', 'project_id', 'private_key', 'client_email'];
+    const missingFields = requiredFields.filter(field => !serviceAccount[field]);
+    if (missingFields.length > 0) {
+        throw new Error(`Missing required fields in service account: ${missingFields.join(', ')}`);
+    }
+
+    console.log('Service account parsed successfully');
     const app = initializeApp({
         credential: cert(serviceAccount)
     }, 'initializeSuperAdmin');
