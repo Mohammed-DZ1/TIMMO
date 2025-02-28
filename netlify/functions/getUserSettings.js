@@ -1,6 +1,5 @@
-const jwt = require('jsonwebtoken');
-const { initializeApp, cert } = require('firebase-admin/app');
-const { getFirestore } = require('firebase-admin/firestore');
+const admin = require('firebase-admin');
+const { initializeFirebaseAdmin } = require('./utils/initializeFirebaseAdmin');
 
 const defaultSettings = {
     theme: 'light',
@@ -16,18 +15,10 @@ const defaultSettings = {
     }
 };
 
-// Initialize Firebase Admin
-const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-const app = initializeApp({
-    credential: cert(serviceAccount)
-});
-
-const db = getFirestore();
-
-const getUserSettings = async (email) => {
+const getUserSettings = async (userId) => {
     try {
         // Get user settings from Firestore
-        const userSettingsRef = db.collection('user_settings').doc(email);
+        const userSettingsRef = admin.firestore().collection('user_settings').doc(userId);
         const doc = await userSettingsRef.get();
 
         if (doc.exists) {
@@ -40,65 +31,65 @@ const getUserSettings = async (email) => {
     }
 };
 
-exports.handler = async (event) => {
-    // Handle CORS preflight
+exports.handler = async (event, context) => {
+    context.callbackWaitsForEmptyEventLoop = false;
+
+    // Enable CORS
+    const headers = {
+        'Access-Control-Allow-Origin': process.env.SITE_URL || '*',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization, Cookie',
+        'Access-Control-Allow-Methods': 'GET, OPTIONS',
+        'Access-Control-Allow-Credentials': 'true'
+    };
+
     if (event.httpMethod === 'OPTIONS') {
-        return {
-            statusCode: 200,
-            headers: {
-                'Access-Control-Allow-Origin': process.env.SITE_URL || '*',
-                'Access-Control-Allow-Methods': 'GET, OPTIONS',
-                'Access-Control-Allow-Headers': 'Content-Type, Authorization, Cookie',
-                'Access-Control-Allow-Credentials': 'true',
-            },
-            body: '',
-        };
-    }
-
-    // Get token from cookies
-    const cookies = event.headers.cookie || '';
-    const tokenMatch = cookies.match(/authToken=([^;]+)/);
-    const token = tokenMatch ? tokenMatch[1] : null;
-
-    if (!token) {
-        return {
-            statusCode: 401,
-            headers: {
-                'Access-Control-Allow-Origin': process.env.SITE_URL || '*',
-                'Access-Control-Allow-Credentials': 'true',
-            },
-            body: JSON.stringify({ message: 'Not authenticated' })
-        };
+        return { statusCode: 204, headers };
     }
 
     try {
-        // Verify token
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        // Initialize Firebase Admin
+        if (!admin.apps.length) {
+            await initializeFirebaseAdmin();
+        }
 
-        // Get user settings
-        const userSettings = await getUserSettings(decoded.email);
+        // Get token from cookies
+        const cookies = event.headers.cookie || '';
+        const tokenMatch = cookies.match(/authToken=([^;]+)/);
+        const token = tokenMatch ? tokenMatch[1] : null;
 
+        if (!token) {
+            return {
+                statusCode: 401,
+                headers,
+                body: JSON.stringify({ error: 'Unauthorized' })
+            };
+        }
+
+        const decodedToken = await admin.auth().verifyIdToken(token);
+
+        if (!decodedToken) {
+            return {
+                statusCode: 401,
+                headers,
+                body: JSON.stringify({ error: 'Invalid token' })
+            };
+        }
+
+        const settings = await getUserSettings(decodedToken.uid);
+        
         return {
             statusCode: 200,
-            headers: {
-                'Access-Control-Allow-Origin': process.env.SITE_URL || '*',
-                'Access-Control-Allow-Credentials': 'true',
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(userSettings)
+            headers,
+            body: JSON.stringify(settings)
         };
     } catch (error) {
-        console.error('GetUserSettings error:', error);
+        console.error('Error in getUserSettings:', error);
         return {
-            statusCode: error.name === 'JsonWebTokenError' ? 401 : 500,
-            headers: {
-                'Access-Control-Allow-Origin': process.env.SITE_URL || '*',
-                'Access-Control-Allow-Credentials': 'true',
-            },
+            statusCode: 500,
+            headers,
             body: JSON.stringify({ 
-                message: error.name === 'JsonWebTokenError' 
-                    ? 'Session expired' 
-                    : 'Internal server error' 
+                error: 'Internal server error',
+                details: error.message 
             })
         };
     }
