@@ -18,10 +18,11 @@ exports.handler = async (event, context) => {
     }
 
     try {
-        // Initialize Firebase Admin
+        // Initialize Firebase Admin (BEST PRACTICE)
         if (!admin.apps.length) {
             await initializeFirebaseAdmin();
         }
+        const db = admin.firestore();
 
         // Verify authentication
         const authHeader = event.headers.authorization;
@@ -44,17 +45,13 @@ exports.handler = async (event, context) => {
             };
         }
 
-        // Get clients from Firestore
-        const clientsRef = admin.firestore().collection('clients');
-        const snapshot = await clientsRef.get();
+        // Get clients from Firestore (BEST PRACTICE)
+        const clientsSnapshot = await db.collection('clients').get();
         
-        const clients = [];
-        snapshot.forEach(doc => {
-            clients.push({
-                id: doc.id,
-                ...doc.data()
-            });
-        });
+        const clients = clientsSnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
 
         return {
             statusCode: 200,
