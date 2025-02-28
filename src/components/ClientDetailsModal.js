@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { db } from '../../config/firebase';
+import { db } from '../firebase';
 import { doc, getDoc } from 'firebase/firestore';
 
 const ClientDetailsModal = ({ client, onClose, onEdit, onDelete, userRole }) => {
