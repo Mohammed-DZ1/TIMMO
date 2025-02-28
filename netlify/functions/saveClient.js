@@ -42,6 +42,7 @@ exports.handler = async (event, context) => {
         if (!admin.apps.length) {
             await initializeFirebaseAdmin();
         }
+        const db = admin.firestore();
 
         // Verify authentication
         const authHeader = event.headers.authorization;
@@ -69,50 +70,34 @@ exports.handler = async (event, context) => {
 
         // Add metadata
         clientData.createdBy = decodedToken.uid;
-        clientData.createdAt = new Date();
-        clientData.updatedAt = new Date();
+        clientData.updatedAt = admin.firestore.FieldValue.serverTimestamp();
 
-        // If client is an owner and has property, save both
-        if (clientData.type === 'OWNER' && clientData.property) {
-            const property = clientData.property;
-            property.clientId = clientData.clientId;
-            property.createdBy = decodedToken.uid;
-            property.createdAt = new Date();
-            property.updatedAt = new Date();
-
-            // Save property
-            const propertiesRef = admin.firestore().collection('properties');
-            const propertyDocRef = propertiesRef.doc();
-            await propertyDocRef.set(property);
-
-            // Remove property object from client data before saving
-            delete clientData.property;
-        }
-
-        // Save to Firestore
-        const clientsRef = admin.firestore().collection('clients');
+        const clientsRef = db.collection('clients');
         let savedClient;
 
         if (clientData.clientId) {
-            // Update existing client
-            await clientsRef.doc(clientData.clientId).update(clientData);
-            savedClient = {
-                clientId: clientData.clientId,
-                ...clientData
-            };
+            // Update existing client (Ensuring Firestore merge update)
+            await clientsRef.doc(clientData.clientId).set(clientData, { merge: true });
+            savedClient = { clientId: clientData.clientId, ...clientData };
         } else {
-            // Add new client
+            // Add new client (Ensure Firestore timestamp)
             const docRef = await clientsRef.add({
                 ...clientData,
                 createdAt: admin.firestore.FieldValue.serverTimestamp(),
                 createdBy: decodedToken.uid
             });
-            savedClient = {
-                clientId: docRef.id,
-                ...clientData,
-                createdAt: new Date().toISOString(),
-                createdBy: decodedToken.uid
-            };
+            savedClient = { clientId: docRef.id, ...clientData };
+        }
+
+        // If client is an owner and has property, save both
+        if (clientData.type === 'OWNER' && clientData.property) {
+            const property = clientData.property;
+            property.clientId = savedClient.clientId;
+            property.createdBy = decodedToken.uid;
+            property.updatedAt = admin.firestore.FieldValue.serverTimestamp();
+
+            // Save property
+            await db.collection('properties').add(property);
         }
 
         return {
