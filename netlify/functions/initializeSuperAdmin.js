@@ -29,27 +29,23 @@ exports.handler = async (event) => {
             };
         }
 
-        // Initialize Firebase Admin
-        const rawServiceAccount = process.env.FIREBASE_SERVICE_ACCOUNT;
-        if (!rawServiceAccount) {
-            throw new Error('FIREBASE_SERVICE_ACCOUNT environment variable is not set');
-        }
-
-        let serviceAccount;
-        try {
-            serviceAccount = JSON.parse(rawServiceAccount);
-        } catch (parseError) {
-            const cleanedServiceAccount = rawServiceAccount
-                .replace(/\\n/g, '\n')
-                .replace(/\\\"/g, '"')
-                .replace(/^\"|\"$/g, '')
-                .trim();
-            serviceAccount = JSON.parse(cleanedServiceAccount);
-        }
-
-        // Initialize Firebase Admin if not already initialized
+        // Initialize Firebase Admin only once
         let app;
         if (getApps().length === 0) {
+            const rawServiceAccount = process.env.FIREBASE_SERVICE_ACCOUNT;
+            if (!rawServiceAccount) {
+                throw new Error('FIREBASE_SERVICE_ACCOUNT environment variable is not set');
+            }
+
+            let serviceAccount;
+            try {
+                serviceAccount = JSON.parse(rawServiceAccount);
+            } catch (parseError) {
+                serviceAccount = JSON.parse(
+                    rawServiceAccount.replace(/\\n/g, '\n').trim()
+                );
+            }
+
             app = initializeApp({
                 credential: cert(serviceAccount)
             });
@@ -84,7 +80,6 @@ exports.handler = async (event) => {
                 })
             };
         } catch (error) {
-            // If error.code === 'auth/user-not-found' then proceed with creation
             if (error.code !== 'auth/user-not-found') {
                 throw error;
             }
@@ -102,14 +97,17 @@ exports.handler = async (event) => {
             role: 'super_admin'
         });
 
-        // Create user document in Firestore
-        await db.collection('users').doc(userRecord.uid).set({
+        // Create user document in Firestore (BEST PRACTICE)
+        const userRef = db.collection('users').doc(userRecord.uid);
+        const userSnapshot = await userRef.get();
+
+        await userRef.set({
             email: SUPER_ADMIN_EMAIL,
             name: SUPER_ADMIN_NAME,
             role: 'super_admin',
-            createdAt: new Date().toISOString(),
+            createdAt: userSnapshot.exists ? userSnapshot.data().createdAt : new Date().toISOString(),
             updatedAt: new Date().toISOString()
-        });
+        }, { merge: true });
 
         return {
             statusCode: 200,
