@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
+import { db } from '../firebase'; // Ensure Firebase is properly imported
+import { doc, getDoc } from 'firebase/firestore';
 
 const AgentForm = ({ onSubmit, userRole }) => {
     const [agentData, setAgentData] = useState({
@@ -15,21 +17,22 @@ const AgentForm = ({ onSubmit, userRole }) => {
         notes: '',
     });
 
-    const [visibleFields, setVisibleFields] = useState({
-        agentName: true,
-        phoneNumber: true,
-        email: true,
-        typeOfAgent: true,
-        yearsOfExperience: true,
-        region: true,
-        activeStatus: true,
-        profilePicture: true,
-        notes: true,
-    });
+    const [visibleFields, setVisibleFields] = useState({});
 
     useEffect(() => {
-        const visibilitySettings = JSON.parse(localStorage.getItem('visibilitySettings')) || {};
-        setVisibleFields(visibilitySettings['AgentForm'] || visibleFields);
+        const fetchVisibilitySettings = async () => {
+            try {
+                const docRef = doc(db, 'settings', 'visibilitySettings'); // Firestore document path
+                const docSnap = await getDoc(docRef);
+                if (docSnap.exists()) {
+                    setVisibleFields(docSnap.data().AgentForm || {});
+                }
+            } catch (error) {
+                console.error('Error fetching visibility settings:', error);
+            }
+        };
+        
+        fetchVisibilitySettings();
     }, []);
 
     const handleChange = (e) => {
@@ -76,53 +79,28 @@ const AgentForm = ({ onSubmit, userRole }) => {
             {visibleFields.agentName && (
                 <div className="mb-4">
                     <label className="block text-gray-700">Agent Name</label>
-                    <input
-                        type="text"
-                        name="agentName"
-                        value={agentData.agentName}
-                        onChange={handleChange}
-                        className="w-full p-2 border rounded"
-                        required
-                    />
+                    <input type="text" name="agentName" value={agentData.agentName} onChange={handleChange} className="w-full p-2 border rounded" required />
                 </div>
             )}
 
             {visibleFields.phoneNumber && (
                 <div className="mb-4">
                     <label className="block text-gray-700">Phone Number</label>
-                    <input
-                        type="tel"
-                        name="phoneNumber"
-                        value={agentData.phoneNumber}
-                        onChange={handleChange}
-                        className="w-full p-2 border rounded"
-                        required
-                    />
+                    <input type="tel" name="phoneNumber" value={agentData.phoneNumber} onChange={handleChange} className="w-full p-2 border rounded" required />
                 </div>
             )}
 
             {visibleFields.email && (
                 <div className="mb-4">
                     <label className="block text-gray-700">Email (Optional)</label>
-                    <input
-                        type="email"
-                        name="email"
-                        value={agentData.email}
-                        onChange={handleChange}
-                        className="w-full p-2 border rounded"
-                    />
+                    <input type="email" name="email" value={agentData.email} onChange={handleChange} className="w-full p-2 border rounded" />
                 </div>
             )}
 
             {visibleFields.typeOfAgent && (
                 <div className="mb-4">
                     <label className="block text-gray-700">Type of Agent</label>
-                    <select
-                        name="typeOfAgent"
-                        value={agentData.typeOfAgent}
-                        onChange={handleChange}
-                        className="w-full p-2 border rounded"
-                    >
+                    <select name="typeOfAgent" value={agentData.typeOfAgent} onChange={handleChange} className="w-full p-2 border rounded">
                         <option value="Inside">Inside</option>
                         <option value="Field">Field</option>
                     </select>
@@ -132,72 +110,39 @@ const AgentForm = ({ onSubmit, userRole }) => {
             {visibleFields.yearsOfExperience && (
                 <div className="mb-4">
                     <label className="block text-gray-700">Years of Experience</label>
-                    <input
-                        type="number"
-                        name="yearsOfExperience"
-                        value={agentData.yearsOfExperience}
-                        onChange={handleChange}
-                        className="w-full p-2 border rounded"
-                    />
+                    <input type="number" name="yearsOfExperience" value={agentData.yearsOfExperience} onChange={handleChange} className="w-full p-2 border rounded" />
                 </div>
             )}
 
             {visibleFields.region && (
                 <div className="mb-4">
                     <label className="block text-gray-700">Region Covered</label>
-                    <input
-                        type="text"
-                        name="region"
-                        value={agentData.region}
-                        onChange={handleChange}
-                        className="w-full p-2 border rounded"
-                    />
+                    <input type="text" name="region" value={agentData.region} onChange={handleChange} className="w-full p-2 border rounded" />
                 </div>
             )}
 
             {visibleFields.activeStatus && (
                 <div className="mb-4">
                     <label className="block text-gray-700">Active Status</label>
-                    <input
-                        type="checkbox"
-                        name="activeStatus"
-                        checked={agentData.activeStatus}
-                        onChange={handleChange}
-                        className="ml-2"
-                    />{' '}
-                    Active
+                    <input type="checkbox" name="activeStatus" checked={agentData.activeStatus} onChange={handleChange} className="ml-2" /> Active
                 </div>
             )}
 
             {visibleFields.profilePicture && (
                 <div className="mb-4">
                     <label className="block text-gray-700">Profile Picture</label>
-                    <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleFileChange}
-                        className="w-full p-2 border rounded"
-                        required
-                    />
+                    <input type="file" accept="image/*" onChange={handleFileChange} className="w-full p-2 border rounded" required />
                 </div>
             )}
 
             {visibleFields.notes && (
                 <div className="mb-4">
                     <label className="block text-gray-700">Notes</label>
-                    <textarea
-                        name="notes"
-                        value={agentData.notes}
-                        onChange={handleChange}
-                        className="w-full p-2 border rounded"
-                        rows="4"
-                    />
+                    <textarea name="notes" value={agentData.notes} onChange={handleChange} className="w-full p-2 border rounded" rows="4" />
                 </div>
             )}
 
-            <button type="submit" className="bg-blue-500 text-white p-2 rounded w-full">
-                Submit Agent
-            </button>
+            <button type="submit" className="bg-blue-500 text-white p-2 rounded w-full">Submit Agent</button>
         </form>
     );
 };
