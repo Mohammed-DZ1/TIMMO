@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { db } from '../firebase';
+import { db } from '../config/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 
 const AgentForm = ({ onSubmit, userRole }) => {
