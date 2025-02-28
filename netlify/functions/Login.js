@@ -8,6 +8,13 @@ initializeFirebaseAdmin();
 const db = getFirestore();
 
 exports.handler = async (event) => {
+    // Detailed logging for all stages
+    console.log('Login Function Invoked', {
+        method: event.httpMethod,
+        body: event.body,
+        headers: event.headers
+    });
+
     // Handle Preflight CORS requests
     if (event.httpMethod === 'OPTIONS') {
         return {
@@ -36,10 +43,17 @@ exports.handler = async (event) => {
     }
 
     try {
+        console.log('Attempting to initialize Firebase Admin');
+        // Ensure Firebase Admin is initialized
+        await initializeFirebaseAdmin();
+        const db = getFirestore();
+
+        console.log('Parsing request body');
         const { email, password } = JSON.parse(event.body);
 
         // Input validation
         if (!email || !password) {
+            console.error('Missing email or password', { email: !!email, password: !!password });
             return {
                 statusCode: 400,
                 headers: {
@@ -51,10 +65,7 @@ exports.handler = async (event) => {
             };
         }
 
-        // Ensure Firebase Admin is initialized
-        await initializeFirebaseAdmin();
-        const db = getFirestore();
-
+        console.log('Searching for user', { email });
         // Find user by email
         const userSnapshot = await db.collection('users')
             .where('email', '==', email)
@@ -62,6 +73,7 @@ exports.handler = async (event) => {
             .get();
 
         if (userSnapshot.empty) {
+            console.error('User not found', { email });
             return {
                 statusCode: 401,
                 headers: {
@@ -76,9 +88,11 @@ exports.handler = async (event) => {
         const userDoc = userSnapshot.docs[0];
         const userData = userDoc.data();
 
+        console.log('Verifying password');
         // Verify password
         const isPasswordValid = await bcrypt.compare(password, userData.password);
         if (!isPasswordValid) {
+            console.error('Invalid password', { email });
             return {
                 statusCode: 401,
                 headers: {
@@ -90,6 +104,7 @@ exports.handler = async (event) => {
             };
         }
 
+        console.log('Generating JWT token');
         // Generate JWT token
         const token = jwt.sign(
             { 
@@ -103,6 +118,7 @@ exports.handler = async (event) => {
             }
         );
 
+        console.log('Login successful', { userId: userDoc.id });
         return {
             statusCode: 200,
             headers: {
@@ -121,11 +137,18 @@ exports.handler = async (event) => {
             })
         };
     } catch (error) {
-        console.error('Detailed Login Error:', {
+        // Comprehensive error logging
+        console.error('Comprehensive Login Error:', {
             message: error.message,
-            stack: error.stack,
             name: error.name,
-            code: error.code
+            stack: error.stack,
+            code: error.code,
+            // Log environment variables (be careful not to log sensitive info)
+            envVars: {
+                SITE_URL: process.env.SITE_URL ? 'SET' : 'NOT SET',
+                JWT_SECRET: process.env.JWT_SECRET ? 'SET' : 'NOT SET',
+                NODE_ENV: process.env.NODE_ENV
+            }
         });
 
         return {
