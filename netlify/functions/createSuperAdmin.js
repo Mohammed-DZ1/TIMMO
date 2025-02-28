@@ -85,13 +85,15 @@ exports.handler = async (event) => {
         // Set custom claims for super admin
         await auth.setCustomUserClaims(userRecord.uid, { superadmin: true });
 
-        // Update or create user document in Firestore
+        // Update or create user document in Firestore (BEST PRACTICE)
         const userRef = db.collection('users').doc(userRecord.uid);
+        const userSnapshot = await userRef.get();
+
         await userRef.set({
             email: SUPER_ADMIN_EMAIL,
             name: name || SUPER_ADMIN_NAME,
             role: 'superadmin',
-            createdAt: new Date().toISOString(),
+            createdAt: userSnapshot.exists ? userSnapshot.data().createdAt : new Date().toISOString(),
             updatedAt: new Date().toISOString()
         }, { merge: true });
 
