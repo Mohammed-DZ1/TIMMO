@@ -41,18 +41,33 @@ exports.handler = async (event) => {
         // Get token from Authorization header
         const token = event.headers.authorization?.split(' ')[1];
         if (!token) {
-            throw new Error('No token provided');
+            return {
+                statusCode: 401,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': process.env.SITE_URL || '*',
+                    'Access-Control-Allow-Credentials': 'true'
+                },
+                body: JSON.stringify({ isAuthenticated: false, error: 'No token provided' })
+            };
         }
 
         // Verify token
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-        // Get user from Firestore
-        const userRef = db.collection('users').doc(decoded.id);
-        const userDoc = await userRef.get();
+        // Get user from Firestore (BEST PRACTICE)
+        const userDoc = await db.collection('users').doc(decoded.id).get();
 
         if (!userDoc.exists) {
-            throw new Error('User not found');
+            return {
+                statusCode: 404,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': process.env.SITE_URL || '*',
+                    'Access-Control-Allow-Credentials': 'true'
+                },
+                body: JSON.stringify({ isAuthenticated: false, error: 'User not found' })
+            };
         }
 
         const userData = userDoc.data();
@@ -78,7 +93,7 @@ exports.handler = async (event) => {
     } catch (error) {
         console.error('Auth check error:', error);
         return {
-            statusCode: error.message === 'No token provided' ? 401 : 500,
+            statusCode: 500,
             headers: {
                 'Content-Type': 'application/json',
                 'Access-Control-Allow-Origin': process.env.SITE_URL || '*',
