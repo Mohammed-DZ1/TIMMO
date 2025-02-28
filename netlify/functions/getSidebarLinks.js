@@ -1,14 +1,5 @@
-const jwt = require('jsonwebtoken');
-const { initializeApp, cert } = require('firebase-admin/app');
-const { getFirestore } = require('firebase-admin/firestore');
-
-// Initialize Firebase Admin
-const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-const app = initializeApp({
-    credential: cert(serviceAccount)
-}, 'getSidebarLinks');
-
-const db = getFirestore();
+const admin = require('firebase-admin');
+const { initializeFirebaseAdmin } = require('./utils/initializeFirebaseAdmin');
 
 // Default links configuration
 const defaultLinks = {
@@ -31,69 +22,72 @@ const defaultLinks = {
     ]
 };
 
-exports.handler = async (event) => {
-    // Handle CORS preflight
+exports.handler = async (event, context) => {
+    context.callbackWaitsForEmptyEventLoop = false;
+
+    // Enable CORS
+    const headers = {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        'Access-Control-Allow-Methods': 'GET, OPTIONS',
+        'Access-Control-Allow-Credentials': 'true',
+        'Content-Type': 'application/json'
+    };
+
     if (event.httpMethod === 'OPTIONS') {
-        return {
-            statusCode: 200,
-            headers: {
-                'Access-Control-Allow-Origin': process.env.SITE_URL || '*',
-                'Access-Control-Allow-Methods': 'GET, OPTIONS',
-                'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-                'Access-Control-Allow-Credentials': 'true'
-            },
-            body: ''
-        };
+        return { statusCode: 204, headers };
     }
 
     try {
-        // Get token from Authorization header
-        const token = event.headers.authorization?.split(' ')[1];
-        if (!token) {
-            throw new Error('No token provided');
+        // Initialize Firebase Admin
+        if (!admin.apps.length) {
+            await initializeFirebaseAdmin();
         }
 
-        // Verify token
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-        // Get user from Firestore
-        const userRef = db.collection('users').doc(decoded.id);
-        const userDoc = await userRef.get();
-
-        if (!userDoc.exists) {
-            throw new Error('User not found');
+        // Verify authentication
+        const authHeader = event.headers.authorization;
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return {
+                statusCode: 401,
+                headers,
+                body: JSON.stringify({ error: 'Unauthorized' })
+            };
         }
 
-        const userData = userDoc.data();
-        const userRole = userData.role;
+        const token = authHeader.split('Bearer ')[1];
+        const decodedToken = await admin.auth().verifyIdToken(token);
 
-        // Get navigation configuration from Firestore
-        const configRef = db.collection('config').doc('navigation');
-        const configDoc = await configRef.get();
-        
-        // Use custom navigation config if it exists, otherwise use default
-        const navigationConfig = configDoc.exists ? configDoc.data() : defaultLinks;
-        const userLinks = navigationConfig[userRole] || defaultLinks[userRole] || defaultLinks['Agent'];
+        if (!decodedToken) {
+            return {
+                statusCode: 401,
+                headers,
+                body: JSON.stringify({ error: 'Invalid token' })
+            };
+        }
+
+        // Get user role from Firestore
+        const userDoc = await admin.firestore()
+            .collection('users')
+            .doc(decodedToken.uid)
+            .get();
+
+        const userRole = userDoc.exists ? userDoc.data().role : 'Agent';
+        const links = defaultLinks[userRole] || defaultLinks.Agent;
 
         return {
             statusCode: 200,
-            headers: {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': process.env.SITE_URL || '*',
-                'Access-Control-Allow-Credentials': 'true'
-            },
-            body: JSON.stringify(userLinks)
+            headers,
+            body: JSON.stringify(links)
         };
     } catch (error) {
-        console.error('Get sidebar links error:', error);
+        console.error('Error in getSidebarLinks:', error);
         return {
-            statusCode: error.message === 'No token provided' ? 401 : 500,
-            headers: {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': process.env.SITE_URL || '*',
-                'Access-Control-Allow-Credentials': 'true'
-            },
-            body: JSON.stringify({ error: error.message })
+            statusCode: 500,
+            headers,
+            body: JSON.stringify({ 
+                error: 'Internal server error',
+                details: error.message 
+            })
         };
     }
 };

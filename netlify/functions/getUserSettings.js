@@ -36,10 +36,11 @@ exports.handler = async (event, context) => {
 
     // Enable CORS
     const headers = {
-        'Access-Control-Allow-Origin': process.env.SITE_URL || '*',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization, Cookie',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
         'Access-Control-Allow-Methods': 'GET, OPTIONS',
-        'Access-Control-Allow-Credentials': 'true'
+        'Access-Control-Allow-Credentials': 'true',
+        'Content-Type': 'application/json'
     };
 
     if (event.httpMethod === 'OPTIONS') {
@@ -52,12 +53,9 @@ exports.handler = async (event, context) => {
             await initializeFirebaseAdmin();
         }
 
-        // Get token from cookies
-        const cookies = event.headers.cookie || '';
-        const tokenMatch = cookies.match(/authToken=([^;]+)/);
-        const token = tokenMatch ? tokenMatch[1] : null;
-
-        if (!token) {
+        // Verify authentication
+        const authHeader = event.headers.authorization;
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
             return {
                 statusCode: 401,
                 headers,
@@ -65,6 +63,7 @@ exports.handler = async (event, context) => {
             };
         }
 
+        const token = authHeader.split('Bearer ')[1];
         const decodedToken = await admin.auth().verifyIdToken(token);
 
         if (!decodedToken) {

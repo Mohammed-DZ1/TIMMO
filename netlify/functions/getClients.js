@@ -2,24 +2,19 @@ const admin = require('firebase-admin');
 const { initializeFirebaseAdmin } = require('./utils/initializeFirebaseAdmin');
 
 exports.handler = async (event, context) => {
-    // Enable CORS
-    if (event.httpMethod === 'OPTIONS') {
-        return {
-            statusCode: 204,
-            headers: {
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-                'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE'
-            }
-        };
-    }
+    context.callbackWaitsForEmptyEventLoop = false;
 
-    // Verify method
-    if (event.httpMethod !== 'GET') {
-        return {
-            statusCode: 405,
-            body: JSON.stringify({ error: 'Method not allowed' })
-        };
+    // Enable CORS
+    const headers = {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        'Access-Control-Allow-Methods': 'GET, OPTIONS',
+        'Access-Control-Allow-Credentials': 'true',
+        'Content-Type': 'application/json'
+    };
+
+    if (event.httpMethod === 'OPTIONS') {
+        return { statusCode: 204, headers };
     }
 
     try {
@@ -33,6 +28,7 @@ exports.handler = async (event, context) => {
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
             return {
                 statusCode: 401,
+                headers,
                 body: JSON.stringify({ error: 'Unauthorized' })
             };
         }
@@ -43,6 +39,7 @@ exports.handler = async (event, context) => {
         if (!decodedToken) {
             return {
                 statusCode: 401,
+                headers,
                 body: JSON.stringify({ error: 'Invalid token' })
             };
         }
@@ -50,7 +47,7 @@ exports.handler = async (event, context) => {
         // Get clients from Firestore
         const clientsRef = admin.firestore().collection('clients');
         const snapshot = await clientsRef.get();
-
+        
         const clients = [];
         snapshot.forEach(doc => {
             clients.push({
@@ -61,17 +58,18 @@ exports.handler = async (event, context) => {
 
         return {
             statusCode: 200,
-            headers: {
-                'Access-Control-Allow-Origin': '*',
-                'Content-Type': 'application/json'
-            },
+            headers,
             body: JSON.stringify(clients)
         };
     } catch (error) {
-        console.error('Error getting clients:', error);
+        console.error('Error in getClients:', error);
         return {
             statusCode: 500,
-            body: JSON.stringify({ error: 'Internal server error' })
+            headers,
+            body: JSON.stringify({ 
+                error: 'Internal server error',
+                details: error.message 
+            })
         };
     }
 };
