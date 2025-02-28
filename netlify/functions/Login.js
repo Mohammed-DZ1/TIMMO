@@ -15,7 +15,7 @@ exports.handler = async (event) => {
             headers: {
                 'Access-Control-Allow-Origin': process.env.SITE_URL || '*',
                 'Access-Control-Allow-Methods': 'POST, OPTIONS',
-                'Access-Control-Allow-Headers': 'Content-Type',
+                'Access-Control-Allow-Headers': 'Content-Type, Authorization',
                 'Access-Control-Allow-Credentials': 'true'
             },
             body: ''
@@ -27,6 +27,7 @@ exports.handler = async (event) => {
         return {
             statusCode: 405,
             headers: {
+                'Content-Type': 'application/json',
                 'Access-Control-Allow-Origin': process.env.SITE_URL || '*',
                 'Access-Control-Allow-Credentials': 'true'
             },
@@ -50,13 +51,13 @@ exports.handler = async (event) => {
             };
         }
 
-        // Get user from Firestore (FIXED QUERY)
-        const userQuery = await db.collection('users')
-            .where('email', '==', email.toLowerCase())
+        // Find user by email
+        const userSnapshot = await db.collection('users')
+            .where('email', '==', email)
             .limit(1)
             .get();
 
-        if (userQuery.empty) {
+        if (userSnapshot.empty) {
             return {
                 statusCode: 401,
                 headers: {
@@ -68,13 +69,12 @@ exports.handler = async (event) => {
             };
         }
 
-        const userDoc = userQuery.docs[0];
+        const userDoc = userSnapshot.docs[0];
         const userData = userDoc.data();
 
         // Verify password
-        const isValidPassword = await bcrypt.compare(password, userData.password);
-
-        if (!isValidPassword) {
+        const isPasswordValid = await bcrypt.compare(password, userData.password);
+        if (!isPasswordValid) {
             return {
                 statusCode: 401,
                 headers: {
@@ -89,16 +89,16 @@ exports.handler = async (event) => {
         // Generate JWT token
         const token = jwt.sign(
             { 
-                email: userData.email,
-                role: userData.role,
-                name: userData.name,
-                id: userDoc.id
+                userId: userDoc.id, 
+                email: userData.email, 
+                role: userData.role || 'user' 
             },
             process.env.JWT_SECRET,
-            { expiresIn: '24h' }
+            { 
+                expiresIn: '24h' 
+            }
         );
 
-        // Return success response
         return {
             statusCode: 200,
             headers: {
@@ -106,19 +106,18 @@ exports.handler = async (event) => {
                 'Access-Control-Allow-Origin': process.env.SITE_URL || '*',
                 'Access-Control-Allow-Credentials': 'true'
             },
-            body: JSON.stringify({
-                token,
+            body: JSON.stringify({ 
+                token, 
                 user: {
                     id: userDoc.id,
                     email: userData.email,
                     name: userData.name,
-                    role: userData.role,
-                    permissions: userData.permissions
+                    role: userData.role
                 }
             })
         };
     } catch (error) {
-        console.error('Login error:', error);
+        console.error('Login Error:', error);
         return {
             statusCode: 500,
             headers: {
@@ -126,7 +125,10 @@ exports.handler = async (event) => {
                 'Access-Control-Allow-Origin': process.env.SITE_URL || '*',
                 'Access-Control-Allow-Credentials': 'true'
             },
-            body: JSON.stringify({ message: 'Internal server error' })
+            body: JSON.stringify({ 
+                message: 'Internal Server Error',
+                error: process.env.NODE_ENV === 'development' ? error.message : 'An unexpected error occurred'
+            })
         };
     }
 };
