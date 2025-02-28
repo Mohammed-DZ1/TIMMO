@@ -29,7 +29,24 @@ export const AuthProvider = ({ children }) => {
             const response = await axios.post('/.netlify/functions/Login', { 
                 email, 
                 password 
+            }, {
+                // Add detailed error handling
+                validateStatus: function (status) {
+                    return status >= 200 && status < 500; // Reject only server errors
+                }
             });
+
+            // Check for specific error responses
+            if (response.status !== 200) {
+                console.error('Login failed:', {
+                    status: response.status,
+                    data: response.data
+                });
+                return {
+                    success: false,
+                    error: response.data?.message || 'Login failed'
+                };
+            }
 
             const { token, user } = response.data;
 
@@ -42,10 +59,20 @@ export const AuthProvider = ({ children }) => {
 
             return { success: true };
         } catch (error) {
-            console.error('Login error:', error.response?.data || error.message);
+            // Comprehensive error logging
+            console.error('Detailed Login Error:', {
+                message: error.message,
+                response: error.response?.data,
+                status: error.response?.status,
+                headers: error.response?.headers
+            });
+
             return {
                 success: false,
-                error: error.response?.data?.message || 'Login failed'
+                error: error.response?.data?.message || 
+                       error.response?.data?.error?.message || 
+                       error.message || 
+                       'Unexpected login error'
             };
         }
     };
