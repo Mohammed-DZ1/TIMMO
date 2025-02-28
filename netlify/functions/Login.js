@@ -1,14 +1,10 @@
 const jwt = require('jsonwebtoken');
-const { initializeApp, cert } = require('firebase-admin/app');
 const { getFirestore } = require('firebase-admin/firestore');
 const bcrypt = require('bcryptjs');
+const { initializeFirebaseAdmin } = require('./utils/initializeFirebaseAdmin');
 
-// Initialize Firebase Admin
-const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-const app = initializeApp({
-    credential: cert(serviceAccount)
-}, 'login');
-
+// Initialize Firebase Admin once
+initializeFirebaseAdmin();
 const db = getFirestore();
 
 exports.handler = async (event) => {
