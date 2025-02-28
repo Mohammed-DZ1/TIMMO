@@ -42,7 +42,7 @@ exports.handler = async (event, context) => {
     }
 
     try {
-        // Initialize Firebase Admin
+        // Initialize Firebase Admin (BEST PRACTICE)
         if (!admin.apps.length) {
             log('Initializing Firebase Admin...');
             try {
@@ -60,6 +60,7 @@ exports.handler = async (event, context) => {
                 };
             }
         }
+        const db = admin.firestore();
 
         // Verify authentication
         const authHeader = event.headers.authorization;
@@ -90,18 +91,14 @@ exports.handler = async (event, context) => {
             };
         }
 
-        // Get properties from Firestore
+        // Get properties from Firestore (BEST PRACTICE)
         log('Fetching properties from Firestore...');
-        const propertiesRef = admin.firestore().collection('properties');
-        const snapshot = await propertiesRef.get();
+        const propertiesSnapshot = await db.collection('properties').get();
         
-        const properties = [];
-        snapshot.forEach(doc => {
-            properties.push({
-                id: doc.id,
-                ...doc.data()
-            });
-        });
+        const properties = propertiesSnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
         log(`Successfully fetched ${properties.length} properties`);
 
         return {
