@@ -54,9 +54,11 @@ exports.handler = async (event) => {
             };
         }
 
-        // Get user from Firestore
-        const usersRef = db.collection('users');
-        const userQuery = await usersRef.where('email', '==', email.toLowerCase()).limit(1).get();
+        // Get user from Firestore (FIXED QUERY)
+        const userQuery = await db.collection('users')
+            .where('email', '==', email.toLowerCase())
+            .limit(1)
+            .get();
 
         if (userQuery.empty) {
             return {
