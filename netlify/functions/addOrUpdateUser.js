@@ -27,7 +27,6 @@ exports.handler = async (event) => {
 
     try {
         const userData = JSON.parse(event.body);
-        const usersRef = db.collection('users');
 
         // Hash password if provided
         if (userData.password) {
@@ -41,12 +40,12 @@ exports.handler = async (event) => {
             userData.createdAt = userData.updatedAt;
         }
 
-        // Save to Firestore
-        const userDoc = userData.id ? 
-            usersRef.doc(userData.id) : 
-            usersRef.doc();
+        // Save to Firestore (FIXED QUERY)
+        const userDocRef = userData.id 
+            ? db.collection('users').doc(userData.id) 
+            : db.collection('users').doc();
 
-        await userDoc.set(userData, { merge: true });
+        await userDocRef.set(userData, { merge: true });
 
         return {
             statusCode: 200,
@@ -57,7 +56,7 @@ exports.handler = async (event) => {
             },
             body: JSON.stringify({ 
                 message: 'User saved successfully',
-                userId: userDoc.id
+                userId: userDocRef.id
             })
         };
     } catch (error) {
