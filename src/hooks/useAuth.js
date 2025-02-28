@@ -1,4 +1,4 @@
-mport { useState, useEffect, createContext, useContext } from 'react';
+import { useState, useEffect, createContext, useContext } from 'react';
 import axios from 'axios';
 
 const AuthContext = createContext(null);
