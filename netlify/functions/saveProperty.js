@@ -42,6 +42,7 @@ exports.handler = async (event, context) => {
         if (!admin.apps.length) {
             await initializeFirebaseAdmin();
         }
+        const db = admin.firestore();
 
         // Verify authentication
         const authHeader = event.headers.authorization;
@@ -66,31 +67,23 @@ exports.handler = async (event, context) => {
 
         // Parse property data
         const propertyData = JSON.parse(event.body);
-        
-        // Add or update property in Firestore
-        const propertiesRef = admin.firestore().collection('properties');
+        propertyData.updatedAt = admin.firestore.FieldValue.serverTimestamp();
+
+        const propertiesRef = db.collection('properties');
         let savedProperty;
 
         if (propertyData.propertyId) {
-            // Update existing property
-            await propertiesRef.doc(propertyData.propertyId).update(propertyData);
-            savedProperty = {
-                propertyId: propertyData.propertyId,
-                ...propertyData
-            };
+            // Update existing property (Ensuring Firestore merge update)
+            await propertiesRef.doc(propertyData.propertyId).set(propertyData, { merge: true });
+            savedProperty = { propertyId: propertyData.propertyId, ...propertyData };
         } else {
-            // Add new property
+            // Add new property (Ensure Firestore timestamp)
             const docRef = await propertiesRef.add({
                 ...propertyData,
                 createdAt: admin.firestore.FieldValue.serverTimestamp(),
                 createdBy: decodedToken.uid
             });
-            savedProperty = {
-                propertyId: docRef.id,
-                ...propertyData,
-                createdAt: new Date().toISOString(),
-                createdBy: decodedToken.uid
-            };
+            savedProperty = { propertyId: docRef.id, ...propertyData };
         }
 
         return {
