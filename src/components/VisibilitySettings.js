@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { db } from '../firebase'; // Ensure Firebase is properly imported
+import { db } from '../../config/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 const defaultSettings = {
