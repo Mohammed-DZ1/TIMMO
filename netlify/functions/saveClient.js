@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
-const { initializeApp, cert } = require('firebase-admin/app');
-const { getFirestore } = require('firebase-admin/firestore');
+const admin = require('firebase-admin');
+const { initializeFirebaseAdmin } = require('./utils/initializeFirebaseAdmin');
 
 // Safe logging function
 const log = (message, data) => {
@@ -13,52 +13,62 @@ const log = (message, data) => {
     }
 };
 
-// Initialize Firebase Admin
-const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-const app = initializeApp({
-    credential: cert(serviceAccount)
-});
-
-const db = getFirestore();
-
 exports.handler = async (event, context) => {
     context.callbackWaitsForEmptyEventLoop = false;
 
+    // Enable CORS
     const headers = {
         'Access-Control-Allow-Origin': 'https://timmodashboard.netlify.app',
-        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
         'Access-Control-Allow-Methods': 'POST, OPTIONS',
         'Access-Control-Allow-Credentials': 'true'
     };
 
-    // Handle preflight requests
     if (event.httpMethod === 'OPTIONS') {
-        return { statusCode: 200, headers };
+        return { statusCode: 204, headers };
+    }
+
+    // Verify method
+    if (event.httpMethod !== 'POST') {
+        return {
+            statusCode: 405,
+            headers,
+            body: JSON.stringify({ error: 'Method not allowed' })
+        };
     }
 
     try {
-        // Get token from cookie
-        const cookies = event.headers.cookie || '';
-        const tokenCookie = cookies.split(';').find(c => c.trim().startsWith('authToken='));
-        
-        if (!tokenCookie) {
+        // Initialize Firebase Admin
+        if (!admin.apps.length) {
+            await initializeFirebaseAdmin();
+        }
+
+        // Verify authentication
+        const authHeader = event.headers.authorization;
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
             return {
                 statusCode: 401,
                 headers,
-                body: JSON.stringify({ message: 'Unauthorized - No token provided' })
+                body: JSON.stringify({ error: 'Unauthorized' })
             };
         }
 
-        const token = tokenCookie.split('=')[1].trim();
+        const token = authHeader.split('Bearer ')[1];
+        const decodedToken = await admin.auth().verifyIdToken(token);
 
-        // Verify token
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        if (!decodedToken) {
+            return {
+                statusCode: 401,
+                headers,
+                body: JSON.stringify({ error: 'Invalid token' })
+            };
+        }
 
         // Parse client data
         const clientData = JSON.parse(event.body);
 
         // Add metadata
-        clientData.createdBy = decoded.email;
+        clientData.createdBy = decodedToken.uid;
         clientData.createdAt = new Date();
         clientData.updatedAt = new Date();
 
@@ -66,12 +76,12 @@ exports.handler = async (event, context) => {
         if (clientData.type === 'OWNER' && clientData.property) {
             const property = clientData.property;
             property.clientId = clientData.clientId;
-            property.createdBy = decoded.email;
+            property.createdBy = decodedToken.uid;
             property.createdAt = new Date();
             property.updatedAt = new Date();
 
             // Save property
-            const propertiesRef = db.collection('properties');
+            const propertiesRef = admin.firestore().collection('properties');
             const propertyDocRef = propertiesRef.doc();
             await propertyDocRef.set(property);
 
@@ -80,19 +90,37 @@ exports.handler = async (event, context) => {
         }
 
         // Save to Firestore
-        const clientsRef = db.collection('clients');
-        const docRef = clientData.clientId ? 
-            clientsRef.doc(clientData.clientId) : 
-            clientsRef.doc();
+        const clientsRef = admin.firestore().collection('clients');
+        let savedClient;
 
-        await docRef.set(clientData, { merge: true });
+        if (clientData.clientId) {
+            // Update existing client
+            await clientsRef.doc(clientData.clientId).update(clientData);
+            savedClient = {
+                clientId: clientData.clientId,
+                ...clientData
+            };
+        } else {
+            // Add new client
+            const docRef = await clientsRef.add({
+                ...clientData,
+                createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                createdBy: decodedToken.uid
+            });
+            savedClient = {
+                clientId: docRef.id,
+                ...clientData,
+                createdAt: new Date().toISOString(),
+                createdBy: decodedToken.uid
+            };
+        }
 
         return {
             statusCode: 200,
             headers,
             body: JSON.stringify({
                 message: 'Client saved successfully',
-                clientId: docRef.id
+                clientId: savedClient.clientId
             })
         };
 

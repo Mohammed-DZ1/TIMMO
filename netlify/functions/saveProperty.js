@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
-const { initializeApp, cert } = require('firebase-admin/app');
-const { getFirestore } = require('firebase-admin/firestore');
+const admin = require('firebase-admin');
+const { initializeFirebaseAdmin } = require('./utils/initializeFirebaseAdmin');
 
 // Safe logging function
 const log = (message, data) => {
@@ -13,78 +13,94 @@ const log = (message, data) => {
     }
 };
 
-// Initialize Firebase Admin
-const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-const app = initializeApp({
-    credential: cert(serviceAccount)
-});
-
-const db = getFirestore();
-
 exports.handler = async (event, context) => {
     context.callbackWaitsForEmptyEventLoop = false;
 
+    // Enable CORS
     const headers = {
         'Access-Control-Allow-Origin': 'https://timmodashboard.netlify.app',
-        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
         'Access-Control-Allow-Methods': 'POST, OPTIONS',
         'Access-Control-Allow-Credentials': 'true'
     };
 
-    // Handle preflight requests
     if (event.httpMethod === 'OPTIONS') {
-        return { statusCode: 200, headers };
+        return { statusCode: 204, headers };
+    }
+
+    // Verify method
+    if (event.httpMethod !== 'POST') {
+        return {
+            statusCode: 405,
+            headers,
+            body: JSON.stringify({ error: 'Method not allowed' })
+        };
     }
 
     try {
-        // Get token from cookie
-        const cookies = event.headers.cookie || '';
-        const tokenCookie = cookies.split(';').find(c => c.trim().startsWith('authToken='));
-        
-        if (!tokenCookie) {
+        // Initialize Firebase Admin
+        if (!admin.apps.length) {
+            await initializeFirebaseAdmin();
+        }
+
+        // Verify authentication
+        const authHeader = event.headers.authorization;
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
             return {
                 statusCode: 401,
                 headers,
-                body: JSON.stringify({ message: 'Unauthorized - No token provided' })
+                body: JSON.stringify({ error: 'Unauthorized' })
             };
         }
 
-        const token = tokenCookie.split('=')[1].trim();
+        const token = authHeader.split('Bearer ')[1];
+        const decodedToken = await admin.auth().verifyIdToken(token);
 
-        // Verify token
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        if (!decodedToken) {
+            return {
+                statusCode: 401,
+                headers,
+                body: JSON.stringify({ error: 'Invalid token' })
+            };
+        }
 
         // Parse property data
         const propertyData = JSON.parse(event.body);
+        
+        // Add or update property in Firestore
+        const propertiesRef = admin.firestore().collection('properties');
+        let savedProperty;
 
-        // Add metadata
-        propertyData.createdBy = decoded.email;
-        propertyData.createdAt = new Date();
-        propertyData.updatedAt = new Date();
-
-        // Handle media files
-        if (propertyData.media && propertyData.media.length > 0) {
-            propertyData.mediaUrls = propertyData.media;
-            delete propertyData.media;
+        if (propertyData.propertyId) {
+            // Update existing property
+            await propertiesRef.doc(propertyData.propertyId).update(propertyData);
+            savedProperty = {
+                propertyId: propertyData.propertyId,
+                ...propertyData
+            };
+        } else {
+            // Add new property
+            const docRef = await propertiesRef.add({
+                ...propertyData,
+                createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                createdBy: decodedToken.uid
+            });
+            savedProperty = {
+                propertyId: docRef.id,
+                ...propertyData,
+                createdAt: new Date().toISOString(),
+                createdBy: decodedToken.uid
+            };
         }
-
-        // Save to Firestore
-        const propertiesRef = db.collection('properties');
-        const docRef = propertyData.propertyId ? 
-            propertiesRef.doc(propertyData.propertyId) : 
-            propertiesRef.doc();
-
-        await docRef.set(propertyData, { merge: true });
 
         return {
             statusCode: 200,
             headers,
             body: JSON.stringify({
                 message: 'Property saved successfully',
-                propertyId: docRef.id
+                propertyId: savedProperty.propertyId
             })
         };
-
     } catch (error) {
         log('Error saving property:', error);
 
