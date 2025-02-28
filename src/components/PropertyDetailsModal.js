@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { db } from '../firebase'; // Ensure Firebase is properly imported
+import { doc, getDoc } from 'firebase/firestore';
 
 const PropertyDetailsModal = ({ property, onClose, onEdit, onDelete, userRole }) => {
     const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
@@ -8,10 +10,19 @@ const PropertyDetailsModal = ({ property, onClose, onEdit, onDelete, userRole })
     const [visibilitySettings, setVisibilitySettings] = useState({});
 
     useEffect(() => {
-        const savedSettings = JSON.parse(localStorage.getItem('visibilitySettings'));
-        if (savedSettings) {
-            setVisibilitySettings(savedSettings);
-        }
+        const fetchVisibilitySettings = async () => {
+            try {
+                const docRef = doc(db, 'settings', 'visibilitySettings'); // Firestore document path
+                const docSnap = await getDoc(docRef);
+                if (docSnap.exists()) {
+                    setVisibilitySettings(docSnap.data());
+                }
+            } catch (error) {
+                console.error('Error fetching visibility settings:', error);
+            }
+        };
+        
+        fetchVisibilitySettings();
     }, []);
 
     const canShowEditButton = visibilitySettings[userRole]?.showEditButton;
@@ -73,7 +84,6 @@ const PropertyDetailsModal = ({ property, onClose, onEdit, onDelete, userRole })
                 <p><strong>Location:</strong> {property.location}</p>
                 <p><strong>Status:</strong> {property.status}</p>
 
-                {/* Media Section */}
                 {property.media && property.media.length > 0 && (
                     <div className="relative w-full h-64 flex justify-center items-center">
                         <div
@@ -82,34 +92,14 @@ const PropertyDetailsModal = ({ property, onClose, onEdit, onDelete, userRole })
                             onTouchStart={handleTouchStart}
                             onTouchEnd={handleTouchEnd}
                         >
-                            {property.media[currentMediaIndex].type.startsWith('image') ? (
-                                <img
-                                    src={URL.createObjectURL(property.media[currentMediaIndex])}
-                                    alt="Property media"
-                                    className="w-full h-full object-cover rounded"
-                                />
-                            ) : (
-                                <video
-                                    src={URL.createObjectURL(property.media[currentMediaIndex])}
-                                    controls
-                                    className="w-full h-full object-cover rounded"
-                                />
-                            )}
+                            <img
+                                src={property.media[currentMediaIndex]}
+                                alt="Property media"
+                                className="w-full h-full object-cover rounded"
+                            />
                         </div>
-
-                        {/* Navigation Arrows */}
-                        <button
-                            onClick={handlePreviousMedia}
-                            className="absolute left-0 top-1/2 transform -translate-y-1/2 bg-gray-700 text-white p-3 rounded-full opacity-75 hover:opacity-100"
-                        >
-                            &#10094;
-                        </button>
-                        <button
-                            onClick={handleNextMedia}
-                            className="absolute right-0 top-1/2 transform -translate-y-1/2 bg-gray-700 text-white p-3 rounded-full opacity-75 hover:opacity-100"
-                        >
-                            &#10095;
-                        </button>
+                        <button onClick={handlePreviousMedia} className="absolute left-0 top-1/2 bg-gray-700 text-white p-3 rounded-full">&#10094;</button>
+                        <button onClick={handleNextMedia} className="absolute right-0 top-1/2 bg-gray-700 text-white p-3 rounded-full">&#10095;</button>
                     </div>
                 )}
 
@@ -123,45 +113,6 @@ const PropertyDetailsModal = ({ property, onClose, onEdit, onDelete, userRole })
                     )}
                 </div>
             </div>
-
-            {/* Full-Screen Media Viewer */}
-            {isFullScreen && (
-                <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center">
-                    <button onClick={toggleFullScreen} className="absolute top-2 right-2 text-white text-2xl">X</button>
-
-                    {property.media[currentMediaIndex].type.startsWith('image') ? (
-                        <img
-                            src={URL.createObjectURL(property.media[currentMediaIndex])}
-                            alt="Full screen media"
-                            className="w-auto max-h-full rounded"
-                            onTouchStart={handleTouchStart}
-                            onTouchEnd={handleTouchEnd}
-                        />
-                    ) : (
-                        <video
-                            src={URL.createObjectURL(property.media[currentMediaIndex])}
-                            controls
-                            className="w-auto max-h-full rounded"
-                            onTouchStart={handleTouchStart}
-                            onTouchEnd={handleTouchEnd}
-                        />
-                    )}
-
-                    {/* Navigation Arrows */}
-                    <button
-                        onClick={handlePreviousMedia}
-                        className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-gray-700 text-white p-3 rounded-full opacity-75 hover:opacity-100"
-                    >
-                        &#10094;
-                    </button>
-                    <button
-                        onClick={handleNextMedia}
-                        className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-gray-700 text-white p-3 rounded-full opacity-75 hover:opacity-100"
-                    >
-                        &#10095;
-                    </button>
-                </div>
-            )}
         </div>
     );
 };
