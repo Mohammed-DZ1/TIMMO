@@ -1,10 +1,5 @@
 import { useState, useEffect, createContext, useContext } from 'react';
-import { 
-    signInWithEmailAndPassword,
-    signOut,
-    onAuthStateChanged 
-} from 'firebase/auth';
-import { auth } from '../config/firebase';
+import axios from 'axios';
 
 const AuthContext = createContext(null);
 
@@ -13,32 +8,57 @@ export const AuthProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, (user) => {
-            setUser(user);
-            setLoading(false);
-        });
-
-        return () => unsubscribe();
+        // Check for existing token on initial load
+        const token = localStorage.getItem('token');
+        const storedUser = localStorage.getItem('user');
+        
+        if (token && storedUser) {
+            try {
+                setUser(JSON.parse(storedUser));
+            } catch (error) {
+                // Invalid stored user, clear storage
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+            }
+        }
+        setLoading(false);
     }, []);
 
     const login = async (email, password) => {
         try {
-            const userCredential = await signInWithEmailAndPassword(auth, email, password);
-            setUser(userCredential.user);
+            const response = await axios.post('/.netlify/functions/Login', { 
+                email, 
+                password 
+            });
+
+            const { token, user } = response.data;
+
+            // Store token and user in localStorage
+            localStorage.setItem('token', token);
+            localStorage.setItem('user', JSON.stringify(user));
+
+            // Update current user
+            setUser(user);
+
             return { success: true };
         } catch (error) {
-            console.error('Login error:', error);
+            console.error('Login error:', error.response?.data || error.message);
             return {
                 success: false,
-                error: error.message || 'Login failed'
+                error: error.response?.data?.message || 'Login failed'
             };
         }
     };
 
     const logout = async () => {
         try {
-            await signOut(auth);
+            // Clear local storage
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+
+            // Update state
             setUser(null);
+
             return { success: true };
         } catch (error) {
             console.error('Logout error:', error);
@@ -48,6 +68,18 @@ export const AuthProvider = ({ children }) => {
             };
         }
     };
+
+    // Configure axios defaults for authenticated requests
+    axios.interceptors.request.use(
+        config => {
+            const token = localStorage.getItem('token');
+            if (token) {
+                config.headers['Authorization'] = `Bearer ${token}`;
+            }
+            return config;
+        },
+        error => Promise.reject(error)
+    );
 
     if (loading) {
         return <div>Loading...</div>;
