@@ -51,6 +51,10 @@ exports.handler = async (event) => {
             };
         }
 
+        // Ensure Firebase Admin is initialized
+        await initializeFirebaseAdmin();
+        const db = getFirestore();
+
         // Find user by email
         const userSnapshot = await db.collection('users')
             .where('email', '==', email)
@@ -117,7 +121,13 @@ exports.handler = async (event) => {
             })
         };
     } catch (error) {
-        console.error('Login Error:', error);
+        console.error('Detailed Login Error:', {
+            message: error.message,
+            stack: error.stack,
+            name: error.name,
+            code: error.code
+        });
+
         return {
             statusCode: 500,
             headers: {
@@ -127,7 +137,13 @@ exports.handler = async (event) => {
             },
             body: JSON.stringify({ 
                 message: 'Internal Server Error',
-                error: process.env.NODE_ENV === 'development' ? error.message : 'An unexpected error occurred'
+                error: process.env.NODE_ENV === 'development' 
+                    ? { 
+                        message: error.message, 
+                        name: error.name,
+                        code: error.code 
+                    } 
+                    : 'An unexpected error occurred'
             })
         };
     }
