@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { db } from '../firebase'; // Ensure Firebase is properly imported
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 const defaultSettings = {
     showEditButton: true,
@@ -8,13 +10,23 @@ const defaultSettings = {
 };
 
 const VisibilitySettings = ({ onSave }) => {
-    const [visibility, setVisibility] = useState(
-        JSON.parse(localStorage.getItem('visibilitySettings')) || defaultSettings
-    );
+    const [visibility, setVisibility] = useState(defaultSettings);
 
     useEffect(() => {
-        localStorage.setItem('visibilitySettings', JSON.stringify(visibility));
-    }, [visibility]);
+        const fetchVisibilitySettings = async () => {
+            try {
+                const docRef = doc(db, 'settings', 'visibilitySettings');
+                const docSnap = await getDoc(docRef);
+                if (docSnap.exists()) {
+                    setVisibility(docSnap.data());
+                }
+            } catch (error) {
+                console.error('Error fetching visibility settings:', error);
+            }
+        };
+        
+        fetchVisibilitySettings();
+    }, []);
 
     const handleChange = (e) => {
         const { name, checked } = e.target;
@@ -24,9 +36,15 @@ const VisibilitySettings = ({ onSave }) => {
         }));
     };
 
-    const handleSave = () => {
-        onSave(visibility);
-        alert('Visibility settings saved successfully!');
+    const handleSave = async () => {
+        try {
+            const docRef = doc(db, 'settings', 'visibilitySettings');
+            await setDoc(docRef, visibility);
+            onSave(visibility);
+            alert('Visibility settings saved successfully!');
+        } catch (error) {
+            console.error('Error saving visibility settings:', error);
+        }
     };
 
     return (
