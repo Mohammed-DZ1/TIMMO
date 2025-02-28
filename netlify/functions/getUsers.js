@@ -11,13 +11,13 @@ const db = getFirestore();
 
 exports.handler = async () => {
     try {
-        const usersRef = db.collection('users');
-        const snapshot = await usersRef.get();
+        // Get users from Firestore (BEST PRACTICE)
+        const usersSnapshot = await db.collection('users').get();
         
-        const users = [];
-        snapshot.forEach(doc => {
-            users.push({ id: doc.id, ...doc.data() });
-        });
+        const users = usersSnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
 
         return {
             statusCode: 200,
