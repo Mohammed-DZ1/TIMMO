@@ -15,16 +15,12 @@ const defaultSettings = {
     }
 };
 
-const getUserSettings = async (userId) => {
+const getUserSettings = async (db, userId) => {
     try {
-        // Get user settings from Firestore
-        const userSettingsRef = admin.firestore().collection('user_settings').doc(userId);
-        const doc = await userSettingsRef.get();
+        // Get user settings from Firestore (BEST PRACTICE)
+        const doc = await db.collection('user_settings').doc(userId).get();
 
-        if (doc.exists) {
-            return doc.data();
-        }
-        return defaultSettings;
+        return doc.exists ? doc.data() : defaultSettings;
     } catch (error) {
         console.error('GetUserSettings error:', error);
         return defaultSettings;
@@ -48,10 +44,11 @@ exports.handler = async (event, context) => {
     }
 
     try {
-        // Initialize Firebase Admin
+        // Initialize Firebase Admin (BEST PRACTICE)
         if (!admin.apps.length) {
             await initializeFirebaseAdmin();
         }
+        const db = admin.firestore();
 
         // Verify authentication
         const authHeader = event.headers.authorization;
@@ -74,7 +71,8 @@ exports.handler = async (event, context) => {
             };
         }
 
-        const settings = await getUserSettings(decodedToken.uid);
+        // Get user settings from Firestore
+        const settings = await getUserSettings(db, decodedToken.uid);
         
         return {
             statusCode: 200,
