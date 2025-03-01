@@ -1,5 +1,6 @@
 import { useState, useEffect, createContext, useContext } from 'react';
 import axios from 'axios';
+import jwt_decode from 'jwt-decode';
 
 const AuthContext = createContext(null);
 
@@ -7,12 +8,25 @@ export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
 
+    // Token validation function
+    const isTokenValid = (token) => {
+        if (!token) return false;
+        try {
+            const decoded = jwt_decode(token);
+            // Check if token is expired
+            return decoded.exp * 1000 > Date.now();
+        } catch (error) {
+            console.error('Token validation error:', error);
+            return false;
+        }
+    };
+
     useEffect(() => {
         // Check for existing token on initial load
         const token = localStorage.getItem('token');
         const storedUser = localStorage.getItem('user');
         
-        if (token && storedUser) {
+        if (token && storedUser && isTokenValid(token)) {
             try {
                 setUser(JSON.parse(storedUser));
             } catch (error) {
@@ -22,6 +36,31 @@ export const AuthProvider = ({ children }) => {
             }
         }
         setLoading(false);
+
+        // Setup axios interceptor only once
+        const interceptor = axios.interceptors.request.use(
+            config => {
+                const token = localStorage.getItem('token');
+                if (token && isTokenValid(token)) {
+                    config.headers['Authorization'] = `Bearer ${token}`;
+                }
+                return config;
+            },
+            error => {
+                // If request fails due to authentication, logout
+                if (error.response && error.response.status === 401) {
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('user');
+                    setUser(null);
+                }
+                return Promise.reject(error);
+            }
+        );
+
+        // Cleanup interceptor
+        return () => {
+            axios.interceptors.request.eject(interceptor);
+        };
     }, []);
 
     const login = async (email, password) => {
@@ -30,9 +69,8 @@ export const AuthProvider = ({ children }) => {
                 email, 
                 password 
             }, {
-                // Add detailed error handling
                 validateStatus: function (status) {
-                    return status >= 200 && status < 500; // Reject only server errors
+                    return status >= 200 && status < 500;
                 }
             });
 
@@ -49,6 +87,15 @@ export const AuthProvider = ({ children }) => {
             }
 
             const { token, user } = response.data;
+
+            // Validate token before storing
+            if (!isTokenValid(token)) {
+                console.error('Received invalid token');
+                return {
+                    success: false,
+                    error: 'Invalid authentication token'
+                };
+            }
 
             // Store token and user in localStorage
             localStorage.setItem('token', token);
@@ -95,18 +142,6 @@ export const AuthProvider = ({ children }) => {
             };
         }
     };
-
-    // Configure axios defaults for authenticated requests
-    axios.interceptors.request.use(
-        config => {
-            const token = localStorage.getItem('token');
-            if (token) {
-                config.headers['Authorization'] = `Bearer ${token}`;
-            }
-            return config;
-        },
-        error => Promise.reject(error)
-    );
 
     if (loading) {
         return <div>Loading...</div>;
