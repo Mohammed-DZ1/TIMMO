@@ -8,15 +8,40 @@ export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
 
-    // Token validation function
+    // Enhanced token validation function
     const isTokenValid = (token) => {
-        if (!token) return false;
+        if (!token) {
+            console.warn('No token provided for validation');
+            return false;
+        }
+        
         try {
+            // Attempt to decode the token
             const decoded = jwt_decode(token);
-            // Check if token is expired
-            return decoded.exp * 1000 > Date.now();
+            
+            // Check token expiration
+            const isNotExpired = decoded.exp * 1000 > Date.now();
+            
+            // Optional: Additional validation checks
+            if (!isNotExpired) {
+                console.warn('Token has expired', {
+                    expiration: new Date(decoded.exp * 1000),
+                    currentTime: new Date()
+                });
+            }
+
+            // You could add more checks here, like:
+            // - Verify issuer
+            // - Check token claims
+            
+            return isNotExpired;
         } catch (error) {
-            console.error('Token validation error:', error);
+            console.error('Token validation failed', {
+                error: error.message,
+                tokenLength: token.length,
+                tokenStart: token.substring(0, 10),
+                tokenEnd: token.substring(token.length - 10)
+            });
             return false;
         }
     };
@@ -33,6 +58,7 @@ export const AuthProvider = ({ children }) => {
                 // Invalid stored user, clear storage
                 localStorage.removeItem('token');
                 localStorage.removeItem('user');
+                console.error('Failed to parse stored user', error);
             }
         }
         setLoading(false);
@@ -43,6 +69,11 @@ export const AuthProvider = ({ children }) => {
                 const token = localStorage.getItem('token');
                 if (token && isTokenValid(token)) {
                     config.headers['Authorization'] = `Bearer ${token}`;
+                } else {
+                    // Remove invalid token
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('user');
+                    setUser(null);
                 }
                 return config;
             },
@@ -74,15 +105,20 @@ export const AuthProvider = ({ children }) => {
                 }
             });
 
-            // Check for specific error responses
+            // Comprehensive error handling
             if (response.status !== 200) {
-                console.error('Login failed:', {
+                console.error('Login failed', {
                     status: response.status,
-                    data: response.data
+                    data: response.data,
+                    headers: response.headers
                 });
                 return {
                     success: false,
-                    error: response.data?.message || 'Login failed'
+                    error: response.data?.message || 'Login failed',
+                    details: {
+                        status: response.status,
+                        data: response.data
+                    }
                 };
             }
 
@@ -90,10 +126,18 @@ export const AuthProvider = ({ children }) => {
 
             // Validate token before storing
             if (!isTokenValid(token)) {
-                console.error('Received invalid token');
+                console.error('Received invalid token', { 
+                    tokenPresent: !!token,
+                    tokenLength: token?.length,
+                    tokenStart: token?.substring(0, 10)
+                });
                 return {
                     success: false,
-                    error: 'Invalid authentication token'
+                    error: 'Invalid authentication token',
+                    details: {
+                        tokenPresent: !!token,
+                        tokenLength: token?.length
+                    }
                 };
             }
 
@@ -109,9 +153,12 @@ export const AuthProvider = ({ children }) => {
             // Comprehensive error logging
             console.error('Detailed Login Error:', {
                 message: error.message,
+                name: error.name,
                 response: error.response?.data,
                 status: error.response?.status,
-                headers: error.response?.headers
+                headers: error.response?.headers,
+                fullError: error,
+                requestData: { email: email.replace(/./g, '*') } // Mask email
             });
 
             return {
@@ -119,7 +166,11 @@ export const AuthProvider = ({ children }) => {
                 error: error.response?.data?.message || 
                        error.response?.data?.error?.message || 
                        error.message || 
-                       'Unexpected login error'
+                       'Unexpected login error',
+                details: {
+                    status: error.response?.status,
+                    data: error.response?.data
+                }
             };
         }
     };
