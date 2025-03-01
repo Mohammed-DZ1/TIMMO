@@ -11,8 +11,8 @@ exports.handler = async (event) => {
     // Detailed logging for all stages
     console.log('Login Function Invoked', {
         method: event.httpMethod,
-        body: event.body,
-        headers: event.headers
+        body: event.body ? 'PRESENT' : 'MISSING',
+        headers: Object.keys(event.headers || {})
     });
 
     // Handle Preflight CORS requests
@@ -44,16 +44,47 @@ exports.handler = async (event) => {
 
     try {
         console.log('Attempting to initialize Firebase Admin');
+        // Comprehensive Firebase Admin initialization logging
+        console.log('Firebase Admin Initialization Attempt', {
+            serviceAccountExists: !!process.env.FIREBASE_SERVICE_ACCOUNT,
+            serviceAccountLength: process.env.FIREBASE_SERVICE_ACCOUNT?.length || 0
+        });
+
         // Ensure Firebase Admin is initialized
         await initializeFirebaseAdmin();
+
+        // Additional logging to verify Firestore access
         const db = getFirestore();
+        console.log('Firestore Initialized', { dbPresent: !!db });
 
         console.log('Parsing request body');
-        const { email, password } = JSON.parse(event.body);
+        let requestBody;
+        try {
+            requestBody = JSON.parse(event.body);
+        } catch (parseError) {
+            console.error('Failed to parse request body', {
+                rawBody: event.body,
+                parseError: parseError.message
+            });
+            return {
+                statusCode: 400,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': process.env.SITE_URL || '*',
+                    'Access-Control-Allow-Credentials': 'true'
+                },
+                body: JSON.stringify({ message: 'Invalid request body' })
+            };
+        }
+
+        const { email, password } = requestBody;
 
         // Input validation
         if (!email || !password) {
-            console.error('Missing email or password', { email: !!email, password: !!password });
+            console.error('Missing email or password', { 
+                emailPresent: !!email, 
+                passwordPresent: !!password 
+            });
             return {
                 statusCode: 400,
                 headers: {
@@ -88,7 +119,7 @@ exports.handler = async (event) => {
         const userDoc = userSnapshot.docs[0];
         const userData = userDoc.data();
 
-        console.log('Verifying password');
+        console.log('Verifying password', { userFound: !!userData });
         // Verify password
         const isPasswordValid = await bcrypt.compare(password, userData.password);
         if (!isPasswordValid) {
@@ -104,7 +135,7 @@ exports.handler = async (event) => {
             };
         }
 
-        console.log('Generating JWT token');
+        console.log('Generating JWT token', { userId: userDoc.id });
         // Generate JWT token
         const token = jwt.sign(
             { 
@@ -147,7 +178,10 @@ exports.handler = async (event) => {
             envVars: {
                 SITE_URL: process.env.SITE_URL ? 'SET' : 'NOT SET',
                 JWT_SECRET: process.env.JWT_SECRET ? 'SET' : 'NOT SET',
-                NODE_ENV: process.env.NODE_ENV
+                NODE_ENV: process.env.NODE_ENV,
+                FIREBASE_SERVICE_ACCOUNT: process.env.FIREBASE_SERVICE_ACCOUNT 
+                    ? `SET (${process.env.FIREBASE_SERVICE_ACCOUNT.length} chars)` 
+                    : 'NOT SET'
             }
         });
 
