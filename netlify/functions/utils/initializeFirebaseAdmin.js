@@ -3,28 +3,34 @@ const admin = require('firebase-admin');
 let isInitialized = false;
 
 const initializeFirebaseAdmin = async () => {
+    // If already initialized, return immediately
     if (isInitialized) {
         return;
     }
 
     try {
-        // Check if environment variable exists
+        // Check if Firebase Admin is already initialized
+        if (admin.apps.length > 0) {
+            console.log('Firebase Admin already initialized');
+            isInitialized = true;
+            return;
+        }
+
+        // Validate environment variable
         if (!process.env.FIREBASE_SERVICE_ACCOUNT) {
-            console.error('FIREBASE_SERVICE_ACCOUNT environment variable is not set');
             throw new Error('FIREBASE_SERVICE_ACCOUNT environment variable is not set');
         }
 
-        // Attempt to parse service account
+        // Parse service account
         let serviceAccount;
         try {
-            // First, try to parse the environment variable
             serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
         } catch (parseError) {
-            console.error('Error parsing FIREBASE_SERVICE_ACCOUNT:', {
+            console.error('Failed to parse FIREBASE_SERVICE_ACCOUNT:', {
                 originalError: parseError.message,
-                environmentVariable: process.env.FIREBASE_SERVICE_ACCOUNT
+                rawServiceAccount: process.env.FIREBASE_SERVICE_ACCOUNT
             });
-            throw new Error(`Invalid FIREBASE_SERVICE_ACCOUNT JSON format: ${parseError.message}`);
+            throw new Error(`Invalid FIREBASE_SERVICE_ACCOUNT JSON: ${parseError.message}`);
         }
 
         // Validate required fields
@@ -32,33 +38,41 @@ const initializeFirebaseAdmin = async () => {
         const missingFields = requiredFields.filter(field => !serviceAccount[field]);
         
         if (missingFields.length > 0) {
-            console.error('Missing required Firebase service account fields:', missingFields);
-            throw new Error(`Missing required Firebase service account fields: ${missingFields.join(', ')}`);
+            console.error('Missing Firebase service account fields:', missingFields);
+            throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
         }
 
-        // Handle private key properly
+        // Sanitize private key
         const privateKey = serviceAccount.private_key
-            .replace(/\\n/g, '\n')  // Replace escaped newlines
-            .replace(/\$\{n\}/g, '\n')  // Handle ${n} format
-            .replace(/\$\{newline\}/g, '\n') // Handle ${newline} format
-            .replace(/^"/, '')  // Remove leading quote
-            .replace(/"$/, ''); // Remove trailing quote
+            .replace(/\\n/g, '\n')
+            .replace(/^"/, '')
+            .replace(/"$/, '')
+            .trim();
 
-        // Initialize Firebase Admin only if not already initialized
-        if (!admin.apps.length) {
-            admin.initializeApp({
-                credential: admin.credential.cert({
-                    projectId: serviceAccount.project_id,
-                    clientEmail: serviceAccount.client_email,
-                    privateKey: privateKey
-                })
-            });
-            
-            isInitialized = true;
-            console.log('Firebase Admin initialized successfully');
-        }
+        // Detailed logging of initialization attempt
+        console.log('Initializing Firebase Admin with:', {
+            projectId: serviceAccount.project_id,
+            clientEmail: serviceAccount.client_email,
+            privateKeyPresent: !!privateKey
+        });
+
+        // Initialize Firebase Admin
+        admin.initializeApp({
+            credential: admin.credential.cert({
+                projectId: serviceAccount.project_id,
+                clientEmail: serviceAccount.client_email,
+                privateKey: privateKey
+            }),
+            // Optional: Add Firestore database URL if needed
+            // databaseURL: `https://${serviceAccount.project_id}.firebaseio.com`
+        });
+
+        isInitialized = true;
+        console.log('Firebase Admin initialized successfully');
+
     } catch (error) {
-        console.error('Comprehensive Firebase Admin Initialization Error:', {
+        // Comprehensive error logging
+        console.error('Firebase Admin Initialization Error:', {
             message: error.message,
             name: error.name,
             stack: error.stack,
@@ -66,6 +80,8 @@ const initializeFirebaseAdmin = async () => {
                 FIREBASE_SERVICE_ACCOUNT: process.env.FIREBASE_SERVICE_ACCOUNT ? 'SET' : 'NOT SET'
             }
         });
+
+        // Re-throw the error to be caught by the caller
         throw error;
     }
 };
