@@ -16,15 +16,9 @@ export const useSettings = () => {
 
         try {
             setError(null);
-            const token = localStorage.getItem('token');
-            
-            if (!token) {
-                throw new Error('No authentication token found');
-            }
-
             const response = await axios.get('/.netlify/functions/getUserSettings', {
+                withCredentials: true,
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Cache-Control': 'no-cache',
                     'Pragma': 'no-cache'
                 }
@@ -34,8 +28,7 @@ export const useSettings = () => {
                 setSettings(response.data);
             }
         } catch (error) {
-            const errorMessage = error.response?.data?.message || error.message || 'Failed to load settings';
-            setError(errorMessage);
+            setError(error.response?.data?.message || 'Failed to load settings');
             console.error('Failed to load settings:', error);
         } finally {
             setLoading(false);
@@ -51,18 +44,12 @@ export const useSettings = () => {
 
         try {
             setError(null);
-            const token = localStorage.getItem('token');
-            
-            if (!token) {
-                throw new Error('No authentication token found');
-            }
-
             const response = await axios.post(
                 '/.netlify/functions/updateUserSettings',
                 newSettings,
                 {
+                    withCredentials: true,
                     headers: {
-                        'Authorization': `Bearer ${token}`,
                         'Cache-Control': 'no-cache',
                         'Pragma': 'no-cache'
                     }
@@ -75,8 +62,7 @@ export const useSettings = () => {
             }
             return false;
         } catch (error) {
-            const errorMessage = error.response?.data?.message || error.message || 'Failed to update settings';
-            setError(errorMessage);
+            setError(error.response?.data?.message || 'Failed to update settings');
             console.error('Failed to update settings:', error);
             return false;
         }
