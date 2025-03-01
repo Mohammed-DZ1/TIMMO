@@ -8,6 +8,23 @@ initializeFirebaseAdmin();
 const db = getFirestore();
 
 exports.handler = async (event) => {
+    // Validate JWT Secret
+    if (!process.env.JWT_SECRET) {
+        console.error('Critical Error: JWT_SECRET environment variable is not set');
+        return {
+            statusCode: 500,
+            headers: {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': process.env.SITE_URL || '*',
+                'Access-Control-Allow-Credentials': 'true'
+            },
+            body: JSON.stringify({ 
+                message: 'Server Configuration Error',
+                error: 'Authentication system is not properly configured'
+            })
+        };
+    }
+
     // Detailed logging for all stages
     console.log('Login Function Invoked', {
         method: event.httpMethod,
@@ -141,12 +158,10 @@ exports.handler = async (event) => {
             { 
                 userId: userDoc.id, 
                 email: userData.email, 
-                role: userData.role || 'user' 
+                role: userData.role || 'user',
+                exp: Math.floor(Date.now() / 1000) + (24 * 60 * 60) // 24 hours expiration
             },
-            process.env.JWT_SECRET,
-            { 
-                expiresIn: '24h' 
-            }
+            process.env.JWT_SECRET
         );
 
         console.log('Login successful', { userId: userDoc.id });
@@ -177,7 +192,7 @@ exports.handler = async (event) => {
             // Log environment variables (be careful not to log sensitive info)
             envVars: {
                 SITE_URL: process.env.SITE_URL ? 'SET' : 'NOT SET',
-                JWT_SECRET: process.env.JWT_SECRET ? 'SET' : 'NOT SET',
+                JWT_SECRET: process.env.JWT_SECRET ? 'MASKED' : 'NOT SET',
                 NODE_ENV: process.env.NODE_ENV,
                 FIREBASE_SERVICE_ACCOUNT: process.env.FIREBASE_SERVICE_ACCOUNT 
                     ? `SET (${process.env.FIREBASE_SERVICE_ACCOUNT.length} chars)` 
