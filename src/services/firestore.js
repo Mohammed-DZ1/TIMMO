@@ -1,9 +1,7 @@
 import { 
     collection,
     doc,
-    addDoc,
     setDoc,
-    getDoc,
     getDocs,
     query,
     where,
@@ -11,9 +9,21 @@ import {
     serverTimestamp 
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
+import { getAuth } from 'firebase/auth';
+
+// Function to check authentication before Firestore operations
+const getCurrentUser = () => {
+    const auth = getAuth();
+    return auth.currentUser;
+};
 
 // Client Operations
 export const saveClient = async (clientData) => {
+    const user = getCurrentUser();
+    if (!user) {
+        return { success: false, error: 'User is not authenticated' };
+    }
+    
     try {
         const clientsRef = collection(db, 'clients');
         const docRef = clientData.clientId ? 
@@ -24,19 +34,25 @@ export const saveClient = async (clientData) => {
         const dataToSave = {
             ...clientData,
             updatedAt: serverTimestamp(),
-            createdAt: clientData.createdAt || serverTimestamp()
+            createdAt: clientData.createdAt || serverTimestamp(),
+            createdBy: user.uid // Track who created the entry
         };
 
         await setDoc(docRef, dataToSave, { merge: true });
-        return { id: docRef.id, ...dataToSave };
+        return { success: true, id: docRef.id, ...dataToSave };
     } catch (error) {
         console.error('Error saving client:', error);
-        throw error;
+        return { success: false, error: error.message || 'Failed to save client' };
     }
 };
 
 // Property Operations
 export const saveProperty = async (propertyData) => {
+    const user = getCurrentUser();
+    if (!user) {
+        return { success: false, error: 'User is not authenticated' };
+    }
+    
     try {
         const propertiesRef = collection(db, 'properties');
         const docRef = propertyData.propertyId ? 
@@ -47,14 +63,15 @@ export const saveProperty = async (propertyData) => {
         const dataToSave = {
             ...propertyData,
             updatedAt: serverTimestamp(),
-            createdAt: propertyData.createdAt || serverTimestamp()
+            createdAt: propertyData.createdAt || serverTimestamp(),
+            createdBy: user.uid // Track creator
         };
 
         await setDoc(docRef, dataToSave, { merge: true });
-        return { id: docRef.id, ...dataToSave };
+        return { success: true, id: docRef.id, ...dataToSave };
     } catch (error) {
         console.error('Error saving property:', error);
-        throw error;
+        return { success: false, error: error.message || 'Failed to save property' };
     }
 };
 
@@ -75,7 +92,7 @@ export const getClientsByType = async (type) => {
         }));
     } catch (error) {
         console.error('Error getting clients:', error);
-        throw error;
+        return { success: false, error: error.message || 'Failed to fetch clients' };
     }
 };
 
@@ -95,6 +112,6 @@ export const getPropertiesByStatus = async (status) => {
         }));
     } catch (error) {
         console.error('Error getting properties:', error);
-        throw error;
+        return { success: false, error: error.message || 'Failed to fetch properties' };
     }
 };
