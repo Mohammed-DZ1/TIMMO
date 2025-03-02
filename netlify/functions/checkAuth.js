@@ -2,11 +2,13 @@ const jwt = require('jsonwebtoken');
 const { initializeApp, cert } = require('firebase-admin/app');
 const { getFirestore } = require('firebase-admin/firestore');
 
-// Initialize Firebase Admin
-const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-const app = initializeApp({
-    credential: cert(serviceAccount)
-}, 'checkAuth');
+// Initialize Firebase Admin if not already initialized
+let app;
+if (!global._firebaseAdminInitialized) {
+    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+    app = initializeApp({ credential: cert(serviceAccount) }, 'checkAuth');
+    global._firebaseAdminInitialized = true;
+}
 
 const db = getFirestore();
 
@@ -53,7 +55,20 @@ exports.handler = async (event) => {
         }
 
         // Verify token
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        let decoded;
+        try {
+            decoded = jwt.verify(token, process.env.JWT_SECRET);
+        } catch (error) {
+            return {
+                statusCode: 403,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': process.env.SITE_URL || '*',
+                    'Access-Control-Allow-Credentials': 'true'
+                },
+                body: JSON.stringify({ isAuthenticated: false, error: 'Invalid token' })
+            };
+        }
 
         // Get user from Firestore (BEST PRACTICE)
         const userDoc = await db.collection('users').doc(decoded.id).get();
