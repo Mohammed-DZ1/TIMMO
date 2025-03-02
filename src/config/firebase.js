@@ -3,8 +3,8 @@ import { getFirestore } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import { getAnalytics } from 'firebase/analytics';
 
-console.log("Firebase API Key from Netlify:", process.env.FIREBASE_API_KEY);
-console.log("Full Firebase Config:", {
+// Define firebaseConfig **before** using it
+const firebaseConfig = {
     apiKey: process.env.FIREBASE_API_KEY,
     authDomain: process.env.FIREBASE_AUTH_DOMAIN,
     projectId: process.env.FIREBASE_PROJECT_ID,
@@ -12,8 +12,11 @@ console.log("Full Firebase Config:", {
     messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID,
     appId: process.env.FIREBASE_APP_ID,
     measurementId: process.env.FIREBASE_MEASUREMENT_ID
-});
+};
 
+// Debugging: Check if variables are loaded
+console.log("Firebase API Key from Netlify:", firebaseConfig.apiKey);
+console.log("Full Firebase Config:", firebaseConfig);
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
