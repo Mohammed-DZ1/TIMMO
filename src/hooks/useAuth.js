@@ -11,10 +11,19 @@ const AuthContext = createContext(null);
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [authError, setAuthError] = useState(null);
 
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, (user) => {
-            setUser(user);
+            if (user && user.emailVerified) {
+                setUser(user);
+            } else {
+                setUser(null);
+            }
+            setLoading(false);
+        }, (error) => {
+            console.error("Auth State Change Error:", error);
+            setAuthError(error.message);
             setLoading(false);
         });
 
@@ -24,10 +33,15 @@ export const AuthProvider = ({ children }) => {
     const login = async (email, password) => {
         try {
             const userCredential = await signInWithEmailAndPassword(auth, email, password);
+            if (!userCredential.user.emailVerified) {
+                throw new Error("Please verify your email before logging in.");
+            }
             setUser(userCredential.user);
+            setAuthError(null);
             return { success: true };
         } catch (error) {
             console.error('Login error:', error);
+            setAuthError(error.message);
             return {
                 success: false,
                 error: error.message || 'Login failed'
@@ -59,6 +73,7 @@ export const AuthProvider = ({ children }) => {
             login, 
             logout, 
             loading,
+            authError,
             isAuthenticated: !!user 
         }}>
             {children}
