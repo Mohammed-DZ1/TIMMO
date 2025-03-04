@@ -30,7 +30,7 @@ export const AuthProvider = ({ children }) => {
         return () => unsubscribe();
     }, []);
 
-    const login = async (email, password) => {
+    const Login = async (email, password) => {
         try {
             const userCredential = await signInWithEmailAndPassword(auth, email, password);
             if (!userCredential.user.emailVerified) {
@@ -70,7 +70,7 @@ export const AuthProvider = ({ children }) => {
     return (
         <AuthContext.Provider value={{ 
             user, 
-            login, 
+            Login, 
             logout, 
             loading,
             authError,
