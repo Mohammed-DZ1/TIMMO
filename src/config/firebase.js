@@ -5,7 +5,7 @@ import { getAnalytics } from 'firebase/analytics';
 
 // Use Netlify environment variables
 const firebaseConfig = {
-    apiKey: process.env.FIREBASE_API_KEY,
+    apiKey: "AIzaSyC9fZZCxZvI-qY6UXPTKh0LAWruB-qIEVI",
     authDomain: process.env.FIREBASE_AUTH_DOMAIN,
     projectId: process.env.FIREBASE_PROJECT_ID,
     storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
