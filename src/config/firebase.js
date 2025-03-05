@@ -3,9 +3,9 @@ import { getFirestore } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import { getAnalytics } from 'firebase/analytics';
 
-// Define firebaseConfig **before** using it
+// Use Netlify environment variables
 const firebaseConfig = {
-     apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
     authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
     projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
     storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
@@ -14,11 +14,9 @@ const firebaseConfig = {
     measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
-// Debugging: Check if variables are loaded
-console.log("Firebase API Key from Netlify:", firebaseConfig.apiKey);
-console.log("Full Firebase Config:", firebaseConfig);
+// Debugging: Check if variables are loaded from Netlify
+console.log("Firebase Config from Netlify:", firebaseConfig);
 
-// Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
